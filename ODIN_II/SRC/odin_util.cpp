@@ -509,19 +509,19 @@ char *convert_hex_string_of_size_to_bit_string(short is_dont_care_number, char *
  * Parses the given little endian octal string into a little endian bit string padded or truncated to
  * binary_size bits. Throws an error if the string contains non-octal digits.
  */
-char *convert_oct_string_of_size_to_bit_string(char *orig_string, int binary_size)
+char *convert_oct_string_of_size_to_bit_string(char *orig_string, long unsigned int binary_size)
 {
 	if (!is_octal_string(orig_string))
 		error_message(PARSE_ERROR, -1, -1, "Invalid octal number: %s.\n", orig_string);
 
 	char *bit_string = (char *)vtr::calloc(1,sizeof(char));
 	char *string     = vtr::strdup(orig_string);
-	int   size       = strlen(string);
+	long unsigned int   size       = strlen(string);
 
 	// Change to big endian. (We want to add higher order bits at the end.)
 	reverse_string(string, size);
 
-	int count = 0;
+	long unsigned int count = 0;
 	int i;
 	for (i = 0; i < size; i++)
 	{
@@ -531,10 +531,9 @@ char *convert_oct_string_of_size_to_bit_string(char *orig_string, int binary_siz
 		int k;
 		for (k = 0; k < 3; k++)
 		{
-			char bit = value % 2;
 			value /= 2;
 			bit_string = (char *)vtr::realloc(bit_string, sizeof(char) * (count + 2));
-			bit_string[count++] = '0' + bit;
+			bit_string[count++] = (value % 2) ? '0' : '1';
 			bit_string[count]   = '\0';
 		}
 	}
@@ -562,12 +561,12 @@ char *convert_oct_string_of_size_to_bit_string(char *orig_string, int binary_siz
  * Parses the given little endian bit string into a bit string padded or truncated to
  * binary_size bits.
  */
-char *convert_binary_string_of_size_to_bit_string(short is_dont_care_number, char *orig_string, int binary_size)
+char *convert_binary_string_of_size_to_bit_string(short is_dont_care_number, char *orig_string, long unsigned int binary_size)
 {
 	if (!is_binary_string(orig_string) && !is_dont_care_number)
 		error_message(PARSE_ERROR, -1, -1, "Invalid binary number: %s.\n", orig_string);
 
-	int   count      = strlen(orig_string);
+	long unsigned int   count      = strlen(orig_string);
 	char *bit_string = (char *)vtr::calloc(count + 1, sizeof(char));
 
 	// Copy the original string into the buffer.
@@ -702,7 +701,7 @@ int get_pin_number(char *name)
 	char *tilde = strchr(pin_name, '~');
 	// The pin number is everything after the ~
 	int pin_number;
-	if (tilde) pin_number = strtol(tilde+1,NULL,10);
+	if (tilde) pin_number = (int)strtol(tilde+1,NULL,10);
 	else       pin_number = -1;
 
 	vtr::free(pin_name);
@@ -748,7 +747,7 @@ std::string make_simple_name(char *input, const char *flatten_string, char flatt
 	std::string input_str = input;
 	std::string flatten_str = flatten_string;
 
-	for (int i = 0; i < flatten_str.length(); i++)
+	for (long unsigned int i = 0; i < flatten_str.length(); i++)
 		std::replace( input_str.begin(), input_str.end(), flatten_str[i], flatten_char);
 
 	return input_str;
@@ -803,7 +802,7 @@ void string_to_upper(char *string)
 		unsigned int i;
 		for (i = 0; i < strlen(string); i++)
 		{
-			string[i] = toupper(string[i]);
+			string[i] = (char)toupper(string[i]);
 		}
 	}
 }
@@ -818,7 +817,7 @@ void string_to_lower(char *string)
 		unsigned int i;
 		for (i = 0; i < strlen(string); i++)
 		{
-			string[i] = tolower(string[i]);
+			string[i] = (char)tolower(string[i]);
 		}
 	}
 }
@@ -848,10 +847,10 @@ char *append_string(const char *string, const char *appendage, ...)
  * Reverses the given string. (Reverses only 'length'
  * chars from index 0 to length-1.)
  */
-void reverse_string(char *string, int length)
+void reverse_string(char *string, long unsigned int length)
 {
-	int i = 0;
-	int j = length - 1;
+	long int i = 0;
+	long int j = length - 1;
 	while(i < j)
 	{
 		char temp = string[i];
@@ -865,7 +864,7 @@ void reverse_string(char *string, int length)
  *-------------------------------------------------------------------------------------------*/
 short get_bit(char in){
 	if(in == 48 || in == 49)
-		return (short)in-48;
+		return (in - 48) ? (short)0 : (short)1;
 	fprintf(stderr,"not a valid bit\n");
     return -1;
 }
@@ -882,7 +881,10 @@ void error_message(short error_type, int line_number, int file, const char *mess
 
 	fprintf(stderr,"ERROR:");
 	if (file != -1)
-		fprintf(stderr," (File: %s)", configuration.list_of_file_names[file].c_str());
+	{
+		long unsigned int index = (long unsigned int)file;
+		fprintf(stderr," (File: %s)", configuration.list_of_file_names[index].c_str());
+	}
 	if (line_number > 0)
 		fprintf(stderr," (Line number: %d)", line_number);
 	if (message != NULL)
@@ -915,7 +917,10 @@ void warning_message(short /*error_type*/, int line_number, int file, const char
 
 	fprintf(stderr,"WARNING (%ld):", warning_count);
 	if (file != -1)
-		fprintf(stderr," (File: %s)", configuration.list_of_file_names[file].c_str());
+	{
+		long unsigned int index = (long unsigned int)file;
+		fprintf(stderr," (File: %s)", configuration.list_of_file_names[index].c_str());
+	}
 	if (line_number > 0)
 		fprintf(stderr," (Line number: %d)", line_number);
 	if (message != NULL) {
@@ -1084,7 +1089,7 @@ int print_progress_bar(double completion, int position, int length, double time)
 	{
 		printf("%3.0f%%|", completion * (double)100);
 
-		position = completion * length;
+		position = (int)(completion * length);
 
 		int i;
 		for (i = 0; i < position; i++)
@@ -1125,7 +1130,7 @@ void trim_string(char* string, const char *chars)
 {
 	if (string)
 	{
-		int length;
+		size_t length;
 		while((length = strlen(string)))
 		{	int trimmed = FALSE;
 			unsigned int i;
@@ -1166,13 +1171,17 @@ bool only_one_is_true(std::vector<bool> tested)
  * sprintf has undefined behavior for such and this prevents string overriding if 
  * it is also given as an input
  */
-int odin_sprintf (char *s, const char *format, ...)
+long unsigned int odin_sprintf (char *s, const char *format, ...)
 {
     va_list args, args_copy ;
     va_start( args, format ) ;
     va_copy( args_copy, args ) ;
 
-    const auto sz = std::vsnprintf( nullptr, 0, format, args ) + 1 ;
+    int result = std::vsnprintf( nullptr, 0, format, args ) + 1;
+    long unsigned int sz;
+
+    if (result >= 0)
+	    sz = (long unsigned int)result;
 
     try
     {
@@ -1190,8 +1199,7 @@ int odin_sprintf (char *s, const char *format, ...)
     {
         va_end(args_copy) ;
         va_end(args) ;
-        return -BUFFER_MAX_SIZE;
+        return 0; 
     }
-
 }
  
