@@ -1,5 +1,16 @@
 #!/bin/bash
 #1
+
+if [ "_${ODIN_SIM_THREAD_COUNT}" != "_" ]; then
+	ODIN_SIM_THREAD_COUNT="-j${ODIN_SIM_THREAD_COUNT}"
+fi
+
+if [ "_${ODIN_SIM_BATCH_MODE}" == "_on" ]; then
+	ODIN_SIM_BATCH_MODE="--batch"
+else
+	ODIN_SIM_BATCH_MODE=""
+fi
+
 trap ctrl_c INT SIGINT SIGTERM
 SHELL=/bin/bash
 
@@ -36,7 +47,7 @@ SMALL_ARCH_SWEEP="\
 
 FULL_ARCH_SWEEP=$(find ../vtr_flow/arch/timing -maxdepth 1 | grep xml)
 
-DEFAULT_CMD_PARAM="${ADDER_DEFINITION}"
+DEFAULT_CMD_PARAM="${ADDER_DEFINITION} ${ODIN_SIM_THREAD_COUNT} ${ODIN_SIM_BATCH_MODE}"
 
 EXEC="./wrapper_odin.sh"
 
