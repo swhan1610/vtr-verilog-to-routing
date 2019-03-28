@@ -236,6 +236,7 @@ static nnode_t *print_update_trace(nnode_t *bottom_node, int cycle);
 
 double used_time;
 int number_of_workers;
+bool batch_mode;
 bool found_best_time;
 
 int num_of_clock;
@@ -271,12 +272,10 @@ void simulate_netlist(netlist_t *netlist)
 	{
 		min_coverage = 0.0001;
 	}
-	if (number_of_workers>1)
+	if (number_of_workers>1 && global_args.parralelized_simulation_in_batch)
 	{
 		int start_cycle = 0;
 		int end_cycle = sim_data->num_vectors;
-		//single_step(sim_data,0);
-		//single_step(sim_data,1);
 		simulate_steps_in_parallel(sim_data,start_cycle,end_cycle,min_coverage);
 	}
 	else
@@ -419,10 +418,9 @@ sim_data_t *init_simulation(netlist_t *netlist)
 	//for multithreading
 	used_time = std::numeric_limits<double>::max();
 	number_of_workers = std::max(1, global_args.parralelized_simulation.value());
-	if(global_args.parralelized_simulation.value() >1 )
-		warning_message(SIMULATION_ERROR,-1,-1,"Executing simulation with maximum of %ld threads", global_args.parralelized_simulation.value());
-		
-
+	if(number_of_workers >1 )
+		warning_message(SIMULATION_ERROR,-1,-1,"Executing simulation with maximum of %ld threads", number_of_workers);
+	
 	found_best_time = false;
 
 	num_of_clock = 0;
@@ -3037,7 +3035,7 @@ static void read_write_to_memory(nnode_t *node , signal_list_t *input_address, s
 		}
 
 
-		if (number_of_workers == 1)
+		if (false == global_args.parralelized_simulation_in_batch)
 		{
 			node->memory_data[address] = new_values;
 		}

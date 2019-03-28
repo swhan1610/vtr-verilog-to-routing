@@ -475,6 +475,13 @@ void get_options(int argc, char** argv) {
 			.metavar("PARALEL NODE COUNT")
 			;
 
+	other_sim_grp.add_argument(global_args.parralelized_simulation_in_batch, "--batch")
+			.help("use batch mode simultation")
+			.default_value("false")
+			.action(argparse::Action::STORE_TRUE)
+			.metavar("BATCH FLAG")
+			;
+
 	other_sim_grp.add_argument(global_args.sim_directory, "-sim_dir")
 			.help("Directory output for simulation")
 			.default_value(DEFAULT_OUTPUT)
