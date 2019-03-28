@@ -1,15 +1,58 @@
 #!/bin/bash
 #1
 
-if [ "_${ODIN_SIM_THREAD_COUNT}" != "_" ]; then
-	ODIN_SIM_THREAD_COUNT="-j${ODIN_SIM_THREAD_COUNT}"
+case $ODIN_SIM_THREAD_COUNT in
+    ''|*[!0-9]*)
+		ODIN_SIM_THREAD_COUNT=""
+	;;
+    *)
+		ODIN_SIM_THREAD_COUNT="-j ${ODIN_SIM_THREAD_COUNT}"
+	;;
+esac
+
+case $ODIN_SIM_BATCH_MODE in
+    on)
+		ODIN_SIM_BATCH_MODE="--batch"
+	;;
+    *)
+		ODIN_SIM_BATCH_MODE=""
+	;;
+esac
+
+#if you want to pass in a new adder definition file
+if [ "_${ADDER_DEFINITION}" != "_" ]; then
+	ADDER_DEFINITION="--adder_type ${ADDER_DEFINITION}"
+else
+	ADDER_DEFINITION="--adder_type default"
 fi
 
-if [ "_${ODIN_SIM_BATCH_MODE}" == "_on" ]; then
-	ODIN_SIM_BATCH_MODE="--batch"
-else
-	ODIN_SIM_BATCH_MODE=""
-fi
+#if you want to change the default number of vectors to generate
+case $GENERATE_VECTOR_COUNT in
+    ''|*[!0-9]*)
+		GENERATE_VECTOR_COUNT="-g 100"
+	;;
+    *)
+		GENERATE_VECTOR_COUNT="-g ${GENERATE_VECTOR_COUNT}"
+	;;
+esac
+
+case $USE_BEST_COVERAGE in
+    off)
+		REGEN_VECTOR_CMD=""
+	;;
+    *)
+		REGEN_VECTOR_CMD="--best_coverage"
+	;;
+esac
+
+case $TIME_LIMIT in
+    ''|*[!0-9]*)
+		TIME_LIMIT="1200s"
+	;;
+    *)
+		TIME_LIMIT="${TIME_LIMIT}s"
+	;;
+esac
 
 trap ctrl_c INT SIGINT SIGTERM
 SHELL=/bin/bash
@@ -26,15 +69,6 @@ HOLD_LOW_RESET="-L reset rst"
 HOLD_HIGH_WE="-H we"
 
 HOLD_PARAM="${HOLD_LOW_RESET} ${HOLD_HIGH_WE}"
-
-#if you want to pass in a new adder definition file
-ADDER_DEFINITION="--adder_type default"
-
-#if you want to change the default number of vectors to generate
-GENERATE_VECTOR_COUNT="-g 10"
-
-#if you want to change the default number of vectors to generate
-REGEN_VECTOR_CMD="--best_coverage -g 100"
 
 DEFAULT_ARCH="../libs/libarchfpga/arch/sample_arch.xml"
 
@@ -60,8 +94,6 @@ REGENERATE_OUTPUT=0
 REGENERATE_BENCH=0
 TEST_TYPE=""
 
-TIME_LIMIT="1200s"
-
 USING_LOW_RESSOURCE=""
 
 function help() {
@@ -76,6 +108,13 @@ Usage: ./verify_odin
 			--clean               * clean temporary directory
 			--nb_of_process [n]   * n = nb of process requested to be used
 			--limit_ressource     * force higher nice value and set hard limit for hardware memory to force swap more ***not always respected by system
+
+		ODIN_SIM_THREAD_COUNT=< N >                     [1]       Use multithreaded simulation using N threads
+		ODIN_SIM_BATCH_MODE=< on/off >                  [off]     Use Batch mode multithreaded simulation
+		ADDER_DEFINITION=< /absolute/path/to/file>      [default] Use template to build adders
+		GENERATE_VECTOR_COUNT=< N >                     [100]     Generate N vectors per simulation
+		USE_BEST_COVERAGE=< on/off >                    [on]      Generate N vectors size batches until best node coverage is achieved
+		TIME_LIMIT=< seconds >                          [1200]    Timeout a simulation/synthesis after N seconds
 "
 }
 
@@ -355,7 +394,7 @@ function sim() {
 											${HOLD_PARAM}"
 
 					if [ "_$REGENERATE_BENCH" == "_1" ]; then
-						simulation_command="${simulation_command} ${REGEN_VECTOR_CMD}"
+						simulation_command="${simulation_command} ${REGEN_VECTOR_CMD} ${GENERATE_VECTOR_COUNT}"
 
 					elif [ -e ${input_vector_file} ]; then
 						simulation_command="${simulation_command} -t ${input_vector_file}"
