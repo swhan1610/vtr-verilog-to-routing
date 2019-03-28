@@ -419,8 +419,8 @@ sim_data_t *init_simulation(netlist_t *netlist)
 	//for multithreading
 	used_time = std::numeric_limits<double>::max();
 	number_of_workers = std::max(1, global_args.parralelized_simulation.value());
-	//if(global_args.parralelized_simulation.value() >1 )
-	//	warning_message(SIMULATION_ERROR,-1,-1,"Executing simulation with maximum of %ld threads", global_args.parralelized_simulation.value());
+	if(global_args.parralelized_simulation.value() >1 )
+		warning_message(SIMULATION_ERROR,-1,-1,"Executing simulation with maximum of %ld threads", global_args.parralelized_simulation.value());
 		
 
 	found_best_time = false;
@@ -1437,8 +1437,12 @@ static thread_node_distribution *calculate_thread_distribution(stages_t *s)
 	double stagecost = nodeoverhead_300;
 	//double threadoverheadcost = 5*nodecost;
 
-	int max_available_threads = get_nprocs();
-	
+	/** not portable
+	 * int max_available_threads = get_nprocs();
+	 */
+
+	int max_available_threads = number_of_workers;
+
 	//store nodes for each thread
 	thread_node_distribution* thread_distribution= (thread_node_distribution *)vtr::malloc(sizeof(thread_node_distribution));
 
@@ -3009,7 +3013,6 @@ static long compute_address(signal_list_t *input_address, int cycle)
 static void read_write_to_memory(nnode_t *node , signal_list_t *input_address, signal_list_t *data_out, signal_list_t *data_in, bool trigger, npin_t *write_enabled, int cycle)
 {
 
-	node->memory_mtx.lock();
 	long address = compute_address(input_address, cycle);
 	
 	 //make a single trigger out of write_enable pin and if it was a positive edge
@@ -3017,62 +3020,64 @@ static void read_write_to_memory(nnode_t *node , signal_list_t *input_address, s
 	bool write = (trigger && 1 == get_pin_value(write_enabled, cycle));
 	bool address_is_valid = (address >= 0 && address < node->memory_data.size());
 
-	std::vector<signed char> new_values(data_out->count);
-	
-	for (long i = 0; i < data_out->count; i++)
-		new_values[i] = -1;
+	/* init the vector with all -1 */
+	std::vector<signed char> new_values(data_out->count, -1);
+
 	if(address_is_valid)
 	{
-		if (write) //write to dicionary
+		// init from memory pins first from previous value
+		new_values = node->memory_data[address];
+
+		// if it is a valid write, grap the input pin and store those in a vector
+		if (write)
 		{
 			for (long i = 0; i < data_out->count; i++)
 			{
 				new_values[i]= get_pin_value(data_in->pins[i],cycle-1);
 			}
-			
-			//node->memory_directory[cycle]= address_update;
-			if ( node->memory_directory.find(cycle) == node->memory_directory.end() ) 
-			{
-				node->memory_directory[cycle] = {};
-			}
-			node->memory_directory[cycle][address]= new_values;
+		}
 
-			//printf("Write dfrom node %ld at cycle%ld \n",node->unique_id,cycle);
-		}			
-		if (!write) //read from the dictionary if does'n exist read from memory
+		/**
+		 * use dictionnary when there are multiple workers
+		 */
+		if (number_of_workers>1)
 		{
-			//printf("read\n");
-			bool found = FALSE;
-			std::map<int,std::map<long,std::vector<signed char>>>::iterator it;
-			for ( it = node->memory_directory.begin(); it != node->memory_directory.end(); it++ )
+			/********* Critical section */
+			/* LOCK */node->memory_mtx.lock();
+			if(write)
 			{
-				int recorded_cycle = it->first;
-				if (recorded_cycle<= cycle)
+				if ( node->memory_directory.find(cycle) == node->memory_directory.end() ) 
 				{
-					if ( node->memory_directory[recorded_cycle].find(address) != node->memory_directory[recorded_cycle].end() ) 
+					node->memory_directory[cycle] = {};
+				}
+				node->memory_directory[cycle][address]= new_values;
+			}
+			/**
+			 * read from the dictionary if exist otherwise use current mem_data value
+			 */
+			else /* READ */
+			{
+				for ( auto it = node->memory_directory.begin(); it != node->memory_directory.end(); it++ )
+				{
+					int recorded_cycle = it->first;
+					if (recorded_cycle <= cycle
+					&& ( node->memory_directory[recorded_cycle].find(address) != node->memory_directory[recorded_cycle].end() ))
 					{
-						found = TRUE;
 						new_values = node->memory_directory[recorded_cycle][address];
 					}
 				}
 			}
-		
-			if (!found) //read from memory pins
-			{
-				new_values= node->memory_data[address];
-			}
+			/* UNLOCK */node->memory_mtx.unlock();
 		}
-
 	}
 
-	//if(new_values.empty())
-
-
+	/**
+	 * now we update the output pins
+	 */
 	for (long i = 0; i < data_out->count; i++)
 	{
 		update_pin_value(data_out->pins[i], new_values[i], cycle);
 	}
-	node->memory_mtx.unlock();
 }
 
 
@@ -3099,13 +3104,9 @@ static void write_back_memory_nodes(nnode_t **nodes, int num_nodes)
 				node->memory_directory[recorded_cycle] = {};
 			}
 			node->memory_directory={};
-
 		}
 	}
-
 }
-
-
 
 /*
  * Computes single port memory.
