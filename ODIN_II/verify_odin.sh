@@ -102,7 +102,7 @@ printf "
 Called program with $INPUT
 
 Usage: ./verify_odin 
-			--test [test name]    * test name is one of ( ${TEST_DIR_LIST}full_suite vtr_basic vtr_strong pre_commit )
+			--test [test name]    * test name is one of ( ${TEST_DIR_LIST} heavy_suite light_suite full_suite vtr_basic vtr_strong pre_commit )
 			--generate_bench      * generate input and output vector for test
 			--generate_output     * generate output vector for test given its input vector
 			--clean               * clean temporary directory
@@ -512,21 +512,38 @@ function parse_args() {
 	done
 }
 
-RUN_LIST=(
-"operators"
-"arch"
-"other"
-"micro"
+HEAVY_LIST=(
 "syntax"
 "full"
 "large"
 )
 
-function run_all() {
-	for test_dir in ${RUN_LIST[@]}; do
+LIGHT_LIST=(
+"operators"
+"arch"
+"other"
+"micro"
+)
+
+
+
+function run_light_suite() {
+	for test_dir in ${LIGHT_LIST[@]}; do
 		sim ${BASE_DIR}/${test_dir} $(cat ${BASE_DIR}/${test_dir}/config.txt)
 	done
 }
+
+function run_heavy_suite() {
+	for test_dir in ${HEAVY_LIST[@]}; do
+		sim ${BASE_DIR}/${test_dir} $(cat ${BASE_DIR}/${test_dir}/config.txt)
+	done
+}
+
+function run_all() {
+	run_light_suite
+	run_heavy_suite
+}
+
 #########################################################
 #	START HERE
 
@@ -549,6 +566,14 @@ case $TEST_TYPE in
 
 	"full_suite")
 		run_all
+		;;	
+		
+	"heavy_suite")
+		run_heavy_suite
+		;;
+
+	"light_suite")
+		run_light_suite
 		;;
 
 	"vtr_basic")
