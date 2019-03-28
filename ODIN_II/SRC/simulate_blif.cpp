@@ -3022,7 +3022,6 @@ static void read_write_to_memory(nnode_t *node , signal_list_t *input_address, s
 
 	/* init the vector with all -1 */
 	std::vector<signed char> new_values(data_out->count, -1);
-
 	if(address_is_valid)
 	{
 		// init from memory pins first from previous value
@@ -3037,10 +3036,15 @@ static void read_write_to_memory(nnode_t *node , signal_list_t *input_address, s
 			}
 		}
 
+
+		if (number_of_workers == 1)
+		{
+			node->memory_data[address] = new_values;
+		}
 		/**
 		 * use dictionnary when there are multiple workers
 		 */
-		if (number_of_workers>1)
+		else
 		{
 			/********* Critical section */
 			/* LOCK */node->memory_mtx.lock();
