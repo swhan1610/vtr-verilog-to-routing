@@ -13,9 +13,10 @@ INPUT=$@
 # grab the absolute Paths
 THIS_SCRIPT=$(readlink -f $0)
 THIS_SCRIPT_EXEC=$(basename ${THIS_SCRIPT})
-
 ODIN_ROOT_DIR=$(dirname ${THIS_SCRIPT})
 VTR_ROOT_DIR=$(readlink -f ${ODIN_ROOT_DIR}/..)
+
+WRAPPER_EXEC="${ODIN_ROOT_DIR}/wrapper_odin.sh"
 
 REGRESSION_DIR="${ODIN_ROOT_DIR}/regression_test/"
 BENCHMARK_DIR="${REGRESSION_DIR}/benchmark/"
@@ -94,7 +95,7 @@ function help() {
 
 printf "Called program with $INPUT
 	Usage: 
-		./verify_odin [ OPTIONS / FLAGS ]
+		${THIS_SCRIPT_EXEC} [ OPTIONS / FLAGS ]
 
 
 	OPTIONS:
@@ -443,7 +444,7 @@ function sim() {
 
 				#build commands
 				mkdir -p $DIR
-				wrapper_odin_command="./wrapper_odin.sh
+				wrapper_odin_command="${WRAPPER_EXEC}
 											--log_file ${DIR}/odin.log
 											--test_name ${TEST_FULL_REF}
 											--failure_log ${global_odin_failure}.log
@@ -504,7 +505,7 @@ function sim() {
 				#build commands
 				mkdir -p $DIR
 
-				wrapper_synthesis_command="./wrapper_odin.sh
+				wrapper_synthesis_command="${WRAPPER_EXEC}
 											--log_file ${DIR}/synthesis.log
 											--test_name ${TEST_FULL_REF}
 											--failure_log ${global_synthesis_failure}.log
@@ -529,7 +530,7 @@ function sim() {
 					#force trigger simulation if input file exist
 					with_sim="1"
 
-					wrapper_simulation_command="./wrapper_odin.sh
+					wrapper_simulation_command="${WRAPPER_EXEC}
 											--log_file ${DIR}/simulation.log
 											--test_name ${TEST_FULL_REF}
 											--failure_log ${global_simulation_failure}.log
