@@ -239,7 +239,7 @@ function _set_flag() {
 	_valgrind_flag=$(_set_if ${_VALGRIND} "--valgrind")
 	_batch_sim_flag=$(_set_if ${_BATCH_SIM} "--batch")
 	_use_best_coverage_flag=$(_set_if ${_BEST_COVERAGE_OFF} "--best_coverage")
-	_perf_flag=$(_set_if ${_USE_PERF} "--best_coverage")
+	_perf_flag=$(_set_if ${_USE_PERF} "--perf")
 	
 	_vector_flag="-g ${_VECTORS}"
 	_timeout_flag="--time_limit ${_TIMEOUT}s"
@@ -447,7 +447,10 @@ function sim() {
 											--failure_log ${global_odin_failure}.log
 											${_timeout_flag}
 											${_low_ressource_flag}
-											${RUN_WITH_VALGRIND}"
+											${_valgrind_flag}"
+				if [ "${_USE_PERF}" == "on" ]; then
+					wrapper_odin_command="${wrapper_odin_command} ${_perf_flag} ${DIR}/perf.data"
+				fi
 
 				odin_command="${DEFAULT_CMD_PARAM}
 								$(cat ${dir}/odin.args | tr '\n' ' ') 
@@ -505,7 +508,11 @@ function sim() {
 											--failure_log ${global_synthesis_failure}.log
 											${_timeout_flag}
 											${_low_ressource_flag}
-											${RUN_WITH_VALGRIND}"
+											${_valgrind_flag}"
+
+				if [ "${_USE_PERF}" == "on" ]; then
+					wrapper_synthesis_command="${wrapper_synthesis_command} ${_perf_flag} ${DIR}/perf.data"
+				fi
 
 				synthesis_command="${DEFAULT_CMD_PARAM}
 									${arch_cmd}
@@ -526,7 +533,11 @@ function sim() {
 											--failure_log ${global_simulation_failure}.log
 											${_timeout_flag}
 											${_low_ressource_flag}
-											${RUN_WITH_VALGRIND}"
+											${_valgrind_flag}"
+
+					if [ "${_USE_PERF}" == "on" ]; then
+						wrapper_simulation_command="${wrapper_simulation_command} ${_perf_flag} ${DIR}/perf.data"
+					fi
 
 					simulation_command="${DEFAULT_CMD_PARAM}
 											${arch_cmd}
