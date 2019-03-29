@@ -39,6 +39,8 @@ exec_n_times() {
     BENCH_NAME=$2
     ARGS="${@:3}"
 
+    /bin/bash -c '${ODIN_BENCHMARK_EXEC} --clean'
+
     for i in $(seq 1 1 ${EXEC_N_TIMES}); do
         /bin/bash -c '${ARGS}'
     done
