@@ -178,7 +178,7 @@ do
 			;;
 
 		--perf)
-			PERF_EXEC="perf stat record -d -d -d -o $2 "
+			PERF_EXEC="perf stat record -a -d -d -d -o $2 "
 			shift
 			;;
 		*) 
