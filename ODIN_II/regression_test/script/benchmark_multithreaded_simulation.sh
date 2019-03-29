@@ -57,7 +57,7 @@ EXECUTION_COUNT="4"
 VECTOR_COUNT="3000"
 TIMEOUT="7200"
 NUMBER_OF_THREAD="30"
-DEFAULT_ARGS="--test_name heavy_suite --perf --generate_bench --vectors ${VECTOR_COUNT} --timeout ${TIMEOUT} --best_coverage_off"
+DEFAULT_ARGS="--test heavy_suite --perf --generate_bench --vectors ${VECTOR_COUNT} --timeout ${TIMEOUT} --best_coverage_off"
 
 #################################################
 # START !
