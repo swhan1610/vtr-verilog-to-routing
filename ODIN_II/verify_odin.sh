@@ -282,22 +282,22 @@ function parse_args() {
 		## number
 			;;-j|--nb_of_process)
 				_NUMBER_OF_PROCESS=$(flag_is_number $1 $2)
-				echo "Using timeout [$2] for synthesis and simulation"
+				echo "Using [$2] processors for this benchmarking suite"
 				shift
 
 			;;-s|--sim_threads)
 				_SIM_THREADS=$(flag_is_number $1 $2)
-				echo "Using timeout [$2] for synthesis and simulation"
+				echo "Using [$2] processors for synthesis and simulation"
 				shift
 
 			;;-V|--vectors)
 				_VECTORS=$(flag_is_number $1 $2)
-				echo "Using timeout [$2] for synthesis and simulation"
+				echo "Using [$2] vectors for synthesis and simulation"
 				shift
 
 			;;-T|--timeout)
 				_TIMEOUT=$(flag_is_number $1 $2)
-				echo "Using timeout [$2] for synthesis and simulation"
+				echo "Using timeout [$2] seconds for synthesis and simulation"
 				shift
 
 		# Boolean flags
