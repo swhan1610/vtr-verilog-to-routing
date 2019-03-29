@@ -79,13 +79,13 @@ function ctrl_c() {
 	QUIT=1
 
 	while [ "_${QUIT}" != "_0" ]
-	then
+	do
 		echo "** ODIN WRAPPER EXITED FORCEFULLY **"
 		jobs -p | xargs kill &> /dev/null
 		pkill odin_II &> /dev/null
 		#should be dead by now
 		exit 1
-	fi
+	done
 }
 
 #this hopefully will force to swap more
