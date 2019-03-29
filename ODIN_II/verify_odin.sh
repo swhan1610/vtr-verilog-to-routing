@@ -1,142 +1,118 @@
 #!/bin/bash
 #1
-
-case $ODIN_SIM_THREAD_COUNT in
-    ''|*[!0-9]*)
-		ODIN_SIM_THREAD_COUNT=""
-	;;
-    *)
-		ODIN_SIM_THREAD_COUNT="-j ${ODIN_SIM_THREAD_COUNT}"
-	;;
-esac
-
-case $ODIN_SIM_BATCH_MODE in
-    on)
-		ODIN_SIM_BATCH_MODE="--batch"
-	;;
-    *)
-		ODIN_SIM_BATCH_MODE=""
-	;;
-esac
-
-#if you want to pass in a new adder definition file
-if [ "_${ADDER_DEFINITION}" != "_" ]; then
-	ADDER_DEFINITION="--adder_type ${ADDER_DEFINITION}"
-else
-	ADDER_DEFINITION="--adder_type default"
-fi
-
-#if you want to change the default number of vectors to generate
-case $GENERATE_VECTOR_COUNT in
-    ''|*[!0-9]*)
-		GENERATE_VECTOR_COUNT="-g 100"
-	;;
-    *)
-		GENERATE_VECTOR_COUNT="-g ${GENERATE_VECTOR_COUNT}"
-	;;
-esac
-
-case $USE_BEST_COVERAGE in
-    off)
-		REGEN_VECTOR_CMD=""
-	;;
-    *)
-		REGEN_VECTOR_CMD="--best_coverage"
-	;;
-esac
-
-case $TIME_LIMIT in
-    ''|*[!0-9]*)
-		TIME_LIMIT="1200s"
-	;;
-    *)
-		TIME_LIMIT="${TIME_LIMIT}s"
-	;;
-esac
-
 trap ctrl_c INT SIGINT SIGTERM
 SHELL=/bin/bash
-
 QUIT=0
-
-INPUT=$@
-
-BASE_DIR="regression_test/benchmark"
-TEST_DIR_LIST=$(find regression_test/benchmark -mindepth 1 -maxdepth 1 -type d | cut -d '/' -f 3 | tr '\n' ' ')  
-
-#include more generic names here for better vector generation
-HOLD_LOW_RESET="-L reset rst"
-HOLD_HIGH_WE="-H we"
-
-HOLD_PARAM="${HOLD_LOW_RESET} ${HOLD_HIGH_WE}"
-
-DEFAULT_ARCH="../libs/libarchfpga/arch/sample_arch.xml"
-
-MEM_ARCH="../vtr_flow/arch/timing/k6_N10_mem32K_40nm.xml"
-
-SMALL_ARCH_SWEEP="\
-../vtr_flow/arch/timing/k6_N10_mem32K_40nm.xml \
-../libs/libarchfpga/arch/sample_arch.xml \
-../vtr_flow/arch/timing/k6_frac_N10_mem32K_40nm.xml"
-
-FULL_ARCH_SWEEP=$(find ../vtr_flow/arch/timing -maxdepth 1 | grep xml)
-
-DEFAULT_CMD_PARAM="${ADDER_DEFINITION} ${ODIN_SIM_THREAD_COUNT} ${ODIN_SIM_BATCH_MODE}"
-
-EXEC="./wrapper_odin.sh"
-
 FAILURE=0
 
-new_run=regression_test/run001
+##############################################
+# grab the input args
+INPUT=$@
 
-NB_OF_PROC=1
-REGENERATE_OUTPUT=0
-REGENERATE_BENCH=0
-TEST_TYPE=""
+##############################################
+# grab the absolute Paths
+THIS_SCRIPT=$(readlink -f $0)
+THIS_SCRIPT_EXEC=$(basename ${THIS_SCRIPT})
 
-USING_LOW_RESSOURCE=""
+ODIN_ROOT_DIR=$(dirname ${THIS_SCRIPT})
+REGRESSION_DIR="${ODIN_ROOT_DIR}/regression_test"
+BENCHMARK_DIR="${REGRESSION_DIR}/benchmark"
+TEST_DIR_LIST=$(find ${BENCHMARK_DIR} -mindepth 1 -maxdepth 1 -type d | cut -d '/' -f 3 | tr '\n' ' ')  
+NEW_RUN_DIR=${REGRESSION_DIR}/run001
 
+##############################################
+# Arch Sweep Arrays to use during benchmarking
+DEFAULT_ARCH="${ODIN_ROOT_DIR}/../libs/libarchfpga/arch/sample_arch.xml"
+MEM_ARCH="${ODIN_ROOT_DIR}/../vtr_flow/arch/timing/k6_N10_mem32K_40nm.xml"
+SMALL_ARCH_SWEEP="${DEFAULT_ARCH} ${MEM_ARCH}"
+FULL_ARCH_SWEEP=$(find ${ODIN_ROOT_DIR}/../vtr_flow/arch/timing -maxdepth 1 | grep xml)
+
+##############################################
+# Include more generic names here for better vector generation
+HOLD_LOW="-L reset rst"
+HOLD_HIGH="-H we"
+HOLD_PARAM="${HOLD_LOW} ${HOLD_HIGH}"
+
+##############################################
+# Exit Functions
+function exit_program() {
+
+	if [ "_${FAILURE}" != "_0" ]
+	then
+		echo "Failed ${FAILURE} benchmarks"
+		echo "View Failure log in ${NEW_RUN_DIR}/test_failures.log"
+
+	else
+		echo "no run failure!"
+	fi
+
+	exit ${FAILURE}
+}
+
+function ctrl_c() {
+	QUIT=1
+	while [ "${QUIT}" != "0" ]
+	do
+		echo "** REGRESSION TEST EXITED FORCEFULLY **"
+		jobs -p | xargs kill &> /dev/null
+		pkill odin_II &> /dev/null
+		pkill ${THIS_SCRIPT_EXEC} &> /dev/null
+		#should be dead by now
+		exit 120
+	done
+}
+
+##############################################
+# Help Print helper
 function help() {
-
 printf "
-Called program with $INPUT
+	Called program with $INPUT
+	Usage: 
+		./verify_odin [ OPTIONS / FLAGS ]
 
-Usage: ./verify_odin 
-			--test [test name]    * test name is one of ( ${TEST_DIR_LIST} heavy_suite light_suite full_suite vtr_basic vtr_strong pre_commit )
-			--generate_bench      * generate input and output vector for test
-			--generate_output     * generate output vector for test given its input vector
-			--clean               * clean temporary directory
-			--nb_of_process [n]   * n = nb of process requested to be used
-			--limit_ressource     * force higher nice value and set hard limit for hardware memory to force swap more ***not always respected by system
+		-h|--help                                     print this
 
-		ODIN_SIM_THREAD_COUNT=< N >                     [1]       Use multithreaded simulation using N threads
-		ODIN_SIM_BATCH_MODE=< on/off >                  [off]     Use Batch mode multithreaded simulation
-		ADDER_DEFINITION=< /absolute/path/to/file>      [default] Use template to build adders
-		GENERATE_VECTOR_COUNT=< N >                     [100]     Generate N vectors per simulation
-		USE_BEST_COVERAGE=< on/off >                    [on]      Generate N vectors size batches until best node coverage is achieved
-		TIME_LIMIT=< seconds >                          [1200]    Timeout a simulation/synthesis after N seconds
+	OPTIONS:
+		-t|--test < test name >         [ null ]      Test name is one of ( ${TEST_DIR_LIST} heavy_suite light_suite full_suite vtr_basic vtr_strong pre_commit )
+		-j|--nb_of_process < N >        [ 1 ]         Number of process requested to be used
+		-s|--sim_threads < N >          [ 1 ]         Use multithreaded simulation using N threads
+		-V|--vectors < N >              [ 100 ]       Use N vectors to generate per simulation
+		-T|--timeout < N sec >          [ 1200 ]      Timeout a simulation/synthesis after N seconds
+		-a|--adder_def < /abs/path >    [ default ]   Use template to build adders
+
+	FLAGS:
+		-g|--generate_bench             [ off ]       Generate input and output vector for test
+		-o|--generate_output            [ off ]       Generate output vector for test given its input vector
+		-c|--clean                      [ off ]       Clean temporary directory
+		-l|--limit_ressource            [ off ]       Force higher nice value and set hard limit for hardware memory to force swap more ***not always respected by system
+		-v|--valgrind                   [ off ]       Run with valgrind
+		-B|--best_coverage_off          [ on ]        Generate N vectors from --vector size batches until best node coverage is achieved
+		-b|--batch_sim                  [ off ]       Use Batch mode multithreaded simulation
+
 "
 }
 
 function config_help() {
 printf "
-config.txt expects a single line of argument wich can be one of:
-			--custom_args_file
-			--arch_list	[list_name]*
-			                *memories        use VTR k6_N10_mem32k architecture
-			                *small_sweep     use a small set of timing architecture
-			                *full_sweep  	 sweep the whole vtr directory *** WILL FAIL ***
-			                *default         use the sample_arch.xml
-			--simulate                       request simulation to be ran
-			--no_threading                   do not use multithreading for this test ** useful if you have large test **
+	config.txt expects a single line of argument wich can be one of:
+				--custom_args_file
+				--arch_list	[list_name]*
+								*memories        use VTR k6_N10_mem32k architecture
+								*small_sweep     use a small set of timing architecture
+								*full_sweep  	 sweep the whole vtr directory *** WILL FAIL ***
+								*default         use the sample_arch.xml
+				--simulate                       request simulation to be ran
+				--no_threading                   do not use multithreading for this test ** useful if you have large test **
 "
 }
 
+###############################################
+# Time Helper Functions
 function get_current_time() {
 	echo $(date +%s%3N)
 }
 
-#1 start #2 end
+# needs start time $1
 function print_time_since() {
 	BEGIN=$1
 	NOW=`get_current_time`
@@ -150,20 +126,22 @@ function print_time_since() {
 	echo "ran test in: $Hour:$Min:$Sec.$Mili"
 }
 
+################################################
+# Init Directories and cleanup
 function init_temp() {
-	last_run=$(find regression_test/run* -maxdepth 0 -type d 2>/dev/null | tail -1 )
+	last_run=$(find ${REGRESSION_DIR}/run* -maxdepth 0 -type d 2>/dev/null | tail -1 )
 	if [ "_${last_run}" != "_" ]
 	then
-		last_run_id=${last_run##regression_test/run}
+		last_run_id=${last_run##${REGRESSION_DIR}/run}
 		n=$(echo $last_run_id | awk '{print $0 + 1}')
-		new_run=regression_test/run$(printf "%03d" $n)
+		NEW_RUN_DIR=${REGRESSION_DIR}/run$(printf "%03d" $n)
 	fi
-	echo "running benchmark @${new_run}"
-	mkdir -p ${new_run}
+	echo "running benchmark @${NEW_RUN_DIR}"
+	mkdir -p ${NEW_RUN_DIR}
 }
 
 function cleanup_temp() {
-	for runs in regression_test/run*
+	for runs in ${REGRESSION_DIR}/run*
 	do 
 		rm -Rf ${runs}
 	done
@@ -180,40 +158,183 @@ function mv_failed() {
 		do
 			parent_dir=$(dirname ${failed_dir}/${failed_benchmark})
 			mkdir -p ${parent_dir}
-			mv ${new_run}/${failed_benchmark} ${parent_dir}
+			mv ${NEW_RUN_DIR}/${failed_benchmark} ${parent_dir}
 			FAILURE=$(( ${FAILURE} + 1 ))
 		done
-		cat ${log_file} >> ${new_run}/test_failures.log
+		cat ${log_file} >> ${NEW_RUN_DIR}/test_failures.log
 		rm -f ${log_file}
 	fi
 }
 
-function exit_program() {
-
-	if [ "_${FAILURE}" != "_0" ]
-	then
-		echo "Failed ${FAILURE} benchmarks"
-		echo "View Failure log in ${new_run}/test_failures.log"
-
-	else
-		echo "no run failure!"
-	fi
-
-	exit ${FAILURE}
+#########################################
+# Helper Functions
+function flag_is_number() {
+	case "_$2" in
+		_) 
+			echo "Passed an empty value for $1"
+			help
+			exit 120
+		;;
+		*)
+			case $2 in
+				''|*[!0-9]*) 
+					echo "Passed a non number value [$2] for $1"
+					help
+					exit 120
+				;;
+				*)
+					echo $2
+				;;
+			esac
+		;;
+	esac
 }
 
-function ctrl_c() {
-	QUIT=1
-	while [ "${QUIT}" != "0" ]
-	do
-		echo "** REGRESSION TEST EXITED FORCEFULLY **"
-		jobs -p | xargs kill &> /dev/null
-		pkill odin_II &> /dev/null
-		pkill ${EXEC} &> /dev/null
-		#should be dead by now
-		exit 120
+##############
+# defaults
+_TEST=""
+_NUMBER_OF_PROCESS="1"
+_SIM_THREADS="1"
+_VECTORS="100"
+_TIMEOUT="1200"
+_ADDER_DEF="default"
+
+_GENERATE_BENCH="off"
+_GENERATE_OUTPUT="off"
+_LIMIT_RESSOURCE="off"
+_VALGRIND="off"
+_BEST_COVERAGE_OFF="on"
+_BATCH_SIM="off"
+
+# boolean type flags
+_low_ressource_flag=""
+_valgrind_flag=""
+_batch_sim_flag=""
+_use_best_coverage_flag=""
+
+# number type flags
+_vector_flag=""
+_timeout_flag=""
+_simulation_threads_flag=""
+
+_adder_definition_flag=""
+
+function _set_if() {
+	[ "$1" == "on" ] && echo "$2" || echo ""
+}
+
+function _set_flag() {
+	_low_ressource_flag=$(_set_if ${_LIMIT_RESSOURCE} "--limit_ressource")
+	_valgrind_flag=$(_set_if ${_LIMIT_RESSOURCE} "--valgrind")
+	_batch_sim_flag=$(_set_if ${_LIMIT_RESSOURCE} "--batch")
+	_use_best_coverage_flag=$(_set_if ${_LIMIT_RESSOURCE} "--best_coverage")
+	
+	_vector_flag="-g ${_VECTORS}"
+	_timeout_flag="--time_limit ${_TIMEOUT}s"
+	_simulation_threads_flag=$([ "${_SIM_THREADS}" != "1" ] && echo "-j ${_SIM_THREADS}")
+
+	_adder_definition_flag="--adder_type ${_ADDER_DEF}"
+
+}
+
+function parse_args() {
+	while [[ "$#" > 0 ]]
+	do 
+		case $1 in 
+
+		# Help Desk
+			-h|--help)
+				echo "Printing Help information"
+				help
+				exit_program
+			
+		## directory in benchmark
+			;;-t|--test)
+				# this is handled down stream
+				if [ "_$2" == "_" ]; then 
+					echo "empty argument for $1"
+					exit 120
+				fi
+
+				_TEST="$2"
+				echo "Running test $2"
+				shift
+
+		## absolute path
+			;;-a|--adder_def)
+
+				if [ "_$2" == "_" ]; then 
+					echo "empty argument for $1"
+					exit 120
+				fi
+				
+				_ADDER_DEF=$2
+
+				if [ "${_ADDER_DEF}" != "default" ] && [ "${_ADDER_DEF}" != "optimized" ] && [ ! -f "$(readlink -f ${_ADDER_DEF})" ]; then
+					echo "invalid adder definition passed in ${_ADDER_DEF}"
+					exit 120
+				fi
+
+				shift
+
+		## number
+			;;-j|--nb_of_process)
+				_NUMBER_OF_PROCESS=$(flag_is_number $1 $2)
+				echo "Using timeout [$2] for synthesis and simulation"
+				shift
+
+			;;-s|--sim_threads)
+				_SIM_THREADS=$(flag_is_number $1 $2)
+				echo "Using timeout [$2] for synthesis and simulation"
+				shift
+
+			;;-V|--vectors)
+				_VECTORS=$(flag_is_number $1 $2)
+				echo "Using timeout [$2] for synthesis and simulation"
+				shift
+
+			;;-T|--timeout)
+				_TIMEOUT=$(flag_is_number $1 $2)
+				echo "Using timeout [$2] for synthesis and simulation"
+				shift
+
+		# Boolean flags
+			;;-g|--generate_bench)		
+				_GENERATE_BENCH="on"
+				echo "generating output vector for test given predefined input"
+
+			;;-o|--generate_output)		
+				_GENERATE_OUTPUT="on"
+				echo "generating input and output vector for test"
+
+			;;-c|--clean)				
+				echo "Cleaning temporary run in directory"
+				cleanup_temp
+
+			;;-l|--limit_ressource)		
+				_LIMIT_RESSOURCE="on"
+				echo "limiting ressources for benchmark, this can help with small hardware"
+
+			;;-v|--valgrind)			
+				_VALGRIND="on"
+				echo "Using Valgrind for benchmarks"
+
+			;;-B|--best_coverage_off)	
+				_BEST_COVERAGE_OFF="off"
+				echo "turning off using best coverage for benchmark vector generation"
+
+			;;-b|--batch_sim)			
+				_BATCH_SIM="on"
+				echo "Using Batch multithreaded simulation with -j threads"
+			;;*) 
+				echo "Unknown parameter passed: $1"
+				help 
+				ctrl_c
+		esac
+		shift
 	done
 }
+
 
 function sim() {
 
@@ -222,7 +343,9 @@ function sim() {
 	with_custom_args="0"
 	arch_list="no_arch"
 	with_sim="0"
-	threads=${NB_OF_PROC}
+	threads=${_NUMBER_OF_PROCESS}
+	DEFAULT_CMD_PARAM="${_adder_definition_flag} ${_simulation_threads_flag} ${_batch_sim_flag}"
+
 
 	if [ ! -e "$1" ]; then
 		echo "invalid benchmark directory passed to simulation function $1"
@@ -286,7 +409,7 @@ function sim() {
 
 	if [ "_${with_custom_args}" == "_1" ]; then
 
-		global_odin_failure="${new_run}/odin_failures"
+		global_odin_failure="${NEW_RUN_DIR}/odin_failures"
 
 		for dir in ${benchmark_dir}/*
 		do
@@ -294,7 +417,7 @@ function sim() {
 				test_name=${dir##*/}
 				TEST_FULL_REF="${bench_type}/${test_name}"
 
-				DIR="${new_run}/${bench_type}/$test_name"
+				DIR="${NEW_RUN_DIR}/${bench_type}/$test_name"
 				blif_file="${DIR}/odin.blif"
 
 
@@ -304,8 +427,8 @@ function sim() {
 											--log_file ${DIR}/odin.log
 											--test_name ${TEST_FULL_REF}
 											--failure_log ${global_odin_failure}.log
-											--time_limit ${TIME_LIMIT}
-											${USING_LOW_RESSOURCE}
+											${_timeout_flag}
+											${_low_ressource_flag}
 											${RUN_WITH_VALGRIND}"
 
 				odin_command="${DEFAULT_CMD_PARAM}
@@ -319,15 +442,15 @@ function sim() {
 
 		#run the custon command
 		echo " ========= Synthesizing Circuits"
-		find ${new_run}/${bench_type}/ -name odin_param | xargs -n1 -P$threads -I test_cmd ${SHELL} -c '$(cat test_cmd)'
+		find ${NEW_RUN_DIR}/${bench_type}/ -name odin_param | xargs -n1 -P$threads -I test_cmd ${SHELL} -c '$(cat test_cmd)'
 		mv_failed ${global_odin_failure}
 
 	############################################
 	# run benchmarks
 	else
 
-		global_synthesis_failure="${new_run}/synthesis_failures"
-		global_simulation_failure="${new_run}/simulation_failures"
+		global_synthesis_failure="${NEW_RUN_DIR}/synthesis_failures"
+		global_simulation_failure="${NEW_RUN_DIR}/simulation_failures"
 
 		for benchmark in ${benchmark_dir}/*.v
 		do
@@ -351,7 +474,7 @@ function sim() {
 
 				TEST_FULL_REF="${bench_type}/${test_name}/${arch_name}"
 
-				DIR="${new_run}/${TEST_FULL_REF}"
+				DIR="${NEW_RUN_DIR}/${TEST_FULL_REF}"
 				blif_file="${DIR}/odin.blif"
 
 
@@ -362,8 +485,8 @@ function sim() {
 											--log_file ${DIR}/synthesis.log
 											--test_name ${TEST_FULL_REF}
 											--failure_log ${global_synthesis_failure}.log
-											--time_limit ${TIME_LIMIT}
-											${USING_LOW_RESSOURCE}
+											${_timeout_flag}
+											${_low_ressource_flag}
 											${RUN_WITH_VALGRIND}"
 
 				synthesis_command="${DEFAULT_CMD_PARAM}
@@ -383,8 +506,8 @@ function sim() {
 											--log_file ${DIR}/simulation.log
 											--test_name ${TEST_FULL_REF}
 											--failure_log ${global_simulation_failure}.log
-											--time_limit ${TIME_LIMIT}
-											${USING_LOW_RESSOURCE}
+											${_timeout_flag}
+											${_low_ressource_flag}
 											${RUN_WITH_VALGRIND}"
 
 					simulation_command="${DEFAULT_CMD_PARAM}
@@ -393,18 +516,18 @@ function sim() {
 											-sim_dir ${DIR}
 											${HOLD_PARAM}"
 
-					if [ "_$REGENERATE_BENCH" == "_1" ]; then
-						simulation_command="${simulation_command} ${REGEN_VECTOR_CMD} ${GENERATE_VECTOR_COUNT}"
+					if [ "${_GENERATE_BENCH}" == "on" ]; then
+						simulation_command="${simulation_command} ${_use_best_coverage_flag} ${_vector_flag}"
 
 					elif [ -e ${input_vector_file} ]; then
 						simulation_command="${simulation_command} -t ${input_vector_file}"
 
-						if [ "_$REGENERATE_OUTPUT" != "_1" ] && [ -e ${output_vector_file} ]; then
+						if [ "${_GENERATE_OUTPUT}" != "on" ] && [ -e ${output_vector_file} ]; then
 							simulation_command="${simulation_command} -T ${output_vector_file}"
 						fi
 						
 					else
-						simulation_command="${simulation_command} ${GENERATE_VECTOR_COUNT}"
+						simulation_command="${simulation_command} ${_vector_flag}"
 
 					fi
 
@@ -415,14 +538,14 @@ function sim() {
 
 		#synthesize the circuits
 		echo " ========= Synthesizing Circuits"
-		find ${new_run}/${bench_type}/ -name cmd_param | xargs -n1 -P$threads -I test_cmd ${SHELL} -c '$(cat test_cmd)'
+		find ${NEW_RUN_DIR}/${bench_type}/ -name cmd_param | xargs -n1 -P$threads -I test_cmd ${SHELL} -c '$(cat test_cmd)'
 		mv_failed ${global_synthesis_failure}
 
 		if [ "_$with_sim" == "_1" ]
 		then
 			#run the simulation
 			echo " ========= Simulating Circuits"
-			find ${new_run}/${bench_type}/ -name sim_param | xargs -n1 -P$threads -I sim_cmd ${SHELL} -c '$(cat sim_cmd)'
+			find ${NEW_RUN_DIR}/${bench_type}/ -name sim_param | xargs -n1 -P$threads -I sim_cmd ${SHELL} -c '$(cat sim_cmd)'
 			mv_failed ${global_simulation_failure}
 		fi
 
@@ -431,111 +554,28 @@ function sim() {
 
 }
 
-function parse_args() {
-	while [[ "$#" > 0 ]]
-	do 
-		case $1 in
-			-h|--help)
-				help
-				exit_program
-				;;
-
-			--generate_output) 
-				if [ $REGENERATE_BENCH != "0" ] || [ $REGENERATE_OUTPUT != "0" ]
-				then
-					echo "can only specify one of --generate_output or --generate_bench"
-					help
-					ctrl_c
-				fi
-				REGENERATE_OUTPUT=1
-				echo "regenerating output vector for test given predefined input"
-				;;
-
-			--generate_bench) 
-				if [ $REGENERATE_BENCH != "0" ] || [ $REGENERATE_OUTPUT != "0" ]
-				then
-					echo "can only specify one of --generate_output or --generate_bench"
-					help
-					ctrl_c
-				fi
-				REGENERATE_BENCH=1
-				echo "regenerating input and output vector for test"
-				;;
-
-			--limit_ressource) 
-				USING_LOW_RESSOURCE="--limit_ressource"
-				echo "limiting ressources for benchmark, this can help with small hardware"
-				;;
-
-			--clean)
-				cleanup_temp
-				;;
-
-			--nb_of_process)
-				if [ $NB_OF_PROC != "1" ]
-				then
-					echo "can only specify the number of processes once"
-					help
-					ctrl_c
-				fi
-
-				if [[ "$2" -gt "0" ]]
-				then
-					NB_OF_PROC=$2
-					echo "Running benchmark on $NB_OF_PROC processes"
-				fi
-				shift
-				;;
-			--valgrind)
-				RUN_WITH_VALGRIND="--valgrind"
-				;;
-
-			--test)
-				if [ "_$TEST_TYPE" != "_" ]
-				then
-					echo "can only specify one test for this script"
-					help
-					ctrl_c
-				fi
-
-				TEST_TYPE=$2
-				shift
-				;;
-
-			*) 
-				echo "Unknown parameter passed: $1"
-				help 
-				ctrl_c
-				;;
-		esac 
-		shift 
-	done
-}
-
 HEAVY_LIST=(
-"syntax"
-"full"
-"large"
+	"syntax"
+	"full"
+	"large"
 )
 
 LIGHT_LIST=(
-"operators"
-"arch"
-"other"
-"micro"
+	"operators"
+	"arch"
+	"other"
+	"micro"
 )
-
-
 
 function run_light_suite() {
 	for test_dir in ${LIGHT_LIST[@]}; do
-		sim ${BASE_DIR}/${test_dir} $(cat ${BASE_DIR}/${test_dir}/config.txt)
+		sim ${BENCHMARK_DIR}/${test_dir} $(cat ${BENCHMARK_DIR}/${test_dir}/config.txt)
 	done
 }
 
 function run_heavy_suite() {
 	for test_dir in ${HEAVY_LIST[@]}; do
-		sim ${BASE_DIR}/${test_dir} $(cat ${BASE_DIR}/${test_dir}/config.txt)
+		sim ${BENCHMARK_DIR}/${test_dir} $(cat ${BENCHMARK_DIR}/${test_dir}/config.txt)
 	done
 }
 
@@ -550,19 +590,18 @@ function run_all() {
 START=`get_current_time`
 
 parse_args $INPUT
+_set_flag
 
-if [ "_${TEST_TYPE}" == "_" ]; then
+if [ "_${_TEST}" == "_" ]; then
 	echo "No input test!"
 	help
 	print_time_since $START
 	exit_program
 fi
 
-
-echo "Benchmark is: $TEST_TYPE"
-
 init_temp
-case $TEST_TYPE in
+echo "Benchmark is: ${_TEST}"
+case "${_TEST}" in
 
 	"full_suite")
 		run_all
@@ -578,39 +617,39 @@ case $TEST_TYPE in
 
 	"vtr_basic")
 		cd ..
-		/usr/bin/perl run_reg_test.pl -j $NB_OF_PROC vtr_reg_basic
+		/usr/bin/perl run_reg_test.pl -j ${_NUMBER_OF_PROCESS} vtr_reg_basic
 		cd ODIN_II
 		;;
 
 	"vtr_strong")
 		cd ..
-		/usr/bin/perl run_reg_test.pl -j $NB_OF_PROC vtr_reg_strong
+		/usr/bin/perl run_reg_test.pl -j ${_NUMBER_OF_PROCESS} vtr_reg_strong
 		cd ODIN_II
 		;;
 
 	"pre_commit")
 		run_all
 		cd ..
-		/usr/bin/perl run_reg_test.pl -j $NB_OF_PROC vtr_reg_basic
-		/usr/bin/perl run_reg_test.pl -j $NB_OF_PROC vtr_reg_strong
+		/usr/bin/perl run_reg_test.pl -j ${_NUMBER_OF_PROCESS} vtr_reg_basic
+		/usr/bin/perl run_reg_test.pl -j ${_NUMBER_OF_PROCESS} vtr_reg_strong
 		cd ODIN_II
 		;;
 
 	*)
-		if [ ! -e ${BASE_DIR}/${TEST_TYPE} ]; then
-			echo "${BASE_DIR}/${TEST_TYPE} Not Found! exiting."
+		if [ ! -e ${BENCHMARK_DIR}/${_TEST} ]; then
+			echo "${BENCHMARK_DIR}/${_TEST} Not Found! exiting."
 			config_help
 			ctrl_c
 		fi
 
-		if [ ! -e ${BASE_DIR}/${TEST_TYPE}/config.txt ]; then
+		if [ ! -e ${BENCHMARK_DIR}/${_TEST}/config.txt ]; then
 			echo "no config file found in the directory."
 			echo "please make sure a config.txt exist"
 			config_help
 			ctrl_c
 		fi
 
-		sim ${BASE_DIR}/${TEST_TYPE} $(cat ${BASE_DIR}/${TEST_TYPE}/config.txt)
+		sim ${BENCHMARK_DIR}/${_TEST} $(cat ${BENCHMARK_DIR}/${_TEST}/config.txt)
 		;;
 esac
 

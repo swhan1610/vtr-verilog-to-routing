@@ -1,13 +1,25 @@
 #!/bin/bash
-#1
 trap ctrl_c INT SIGINT SIGTERM
 SHELL=/bin/bash
-
 QUIT=0
 
-TIME_EXEC=$($SHELL -c "which time") 
+##############################################
+# grab the input args
 INPUT=$@
 
+##############################################
+# grab the absolute Paths
+THIS_SCRIPT=$(readlink -f $0)
+THIS_SCRIPT_EXEC=$(basename ${THIS_SCRIPT})
+ODIN_ROOT_DIR=$(dirname ${THIS_SCRIPT})
+
+EXEC="${ODIN_ROOT_DIR}/odin_II"
+if [ ! -f ${EXEC} ]; then
+	echo "Unable to find the odin executable at ${EXEC}"
+	exit 120
+fi
+
+TIME_EXEC=$($SHELL -c "which time") 
 VALGRIND_EXEC=""
 LOG=""
 LOG_FILE=""
@@ -17,13 +29,15 @@ EXIT_STATUS=3
 TIME_LIMIT="86400s" #default to a full day
 
 export TIME="\
-	elapsed: %E 
-	CPU:     %P
-	max:     %M KiB
-	swaps:   %s
+	Elapsed Time:      %e Seconds
+	CPU:               %P
+	Max Memory:        %M KiB
+	Average Memory:    %K KiB
+	Minor PF:          %R
+	Major PF:          %F
+	Context Switch:    %c+%w
 "
 
-EXEC="./odin_II"
 
 function help() {
 printf "
