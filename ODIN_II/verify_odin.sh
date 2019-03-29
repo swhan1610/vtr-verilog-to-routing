@@ -66,6 +66,7 @@ function exit_program() {
 }
 
 function ctrl_c() {
+	trap '' INT SIGINT SIGTERM
 	QUIT=1
 	while [ "${QUIT}" != "0" ]
 	do
