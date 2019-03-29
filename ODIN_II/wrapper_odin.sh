@@ -21,6 +21,7 @@ fi
 
 TIME_EXEC=$($SHELL -c "which time") 
 VALGRIND_EXEC=""
+PERF_EXEC=""
 LOG=""
 LOG_FILE=""
 TEST_NAME="odin"
@@ -50,6 +51,7 @@ Usage: ./wrapper_odin.sh [options] CMD
 			--failure_log                           * output the display label to a file if there was a failure
 			--time_limit                            * stops Odin after X seconds
 			--limit_ressource						* limit ressource usage using ulimit -m (25% of hrdw memory) and nice value of 19
+			--perf <output_file>                    * Use perf stat record -d -d -d -o < output_file > 
 "
 }
 
@@ -175,6 +177,9 @@ do
 			VALGRIND_EXEC="valgrind --leak-check=full"
 			;;
 
+		--perf)
+			PERF_EXEC="perf stat record -d -d -d -o $2 "
+			;;
 		*) 
 			cmd=$@
 			cmd="${VALGRIND_EXEC} ${EXEC} ${cmd}"
@@ -184,9 +189,9 @@ do
 			display "running"
 
 			if [ "_${LOG_FILE}" != "_" ]; then 
-				timeout ${TIME_LIMIT} /bin/bash -c "${TIME_EXEC} --output=${LOG_FILE} --append ${cmd} &>> ${LOG_FILE}" &> /dev/null && EXIT_STATUS=0 || EXIT_STATUS=1 
+				timeout ${TIME_LIMIT} /bin/bash -c "${TIME_EXEC} --output=${LOG_FILE} --append ${PERF_EXEC} ${cmd} &>> ${LOG_FILE}" &> /dev/null && EXIT_STATUS=0 || EXIT_STATUS=1 
 			else
-				timeout ${TIME_LIMIT} /bin/bash -c "${TIME_EXEC} ${cmd}" && EXIT_STATUS=0 || EXIT_STATUS=1
+				timeout ${TIME_LIMIT} /bin/bash -c "${TIME_EXEC} ${PERF_EXEC} ${cmd}" && EXIT_STATUS=0 || EXIT_STATUS=1
 			fi
 			break
 			;;

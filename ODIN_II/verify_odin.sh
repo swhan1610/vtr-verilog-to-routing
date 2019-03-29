@@ -48,6 +48,7 @@ _LIMIT_RESSOURCE="off"
 _VALGRIND="off"
 _BEST_COVERAGE_OFF="on"
 _BATCH_SIM="off"
+_USE_PERF="off"
 
 ##############################################
 # Exit Functions
@@ -81,30 +82,37 @@ function ctrl_c() {
 
 ##############################################
 # Help Print helper
+_prt_cur_arg() {
+	arg="[ $1 ]"
+	line='                      '
+	printf "%s%s" $arg "${line:${#arg}}"
+}
+
 function help() {
-printf "
-	Called program with $INPUT
+
+printf "Called program with $INPUT
 	Usage: 
 		./verify_odin [ OPTIONS / FLAGS ]
 
-		-h|--help                                     print this
 
 	OPTIONS:
-		-t|--test < test name >         [ ${_TEST} ]      Test name is one of ( ${TEST_DIR_LIST} heavy_suite light_suite full_suite vtr_basic vtr_strong pre_commit )
-		-j|--nb_of_process < N >        [ ${_NUMBER_OF_PROCESS} ]         Number of process requested to be used
-		-s|--sim_threads < N >          [ ${_SIM_THREADS} ]         Use multithreaded simulation using N threads
-		-V|--vectors < N >              [ ${_VECTORS} ]       Use N vectors to generate per simulation
-		-T|--timeout < N sec >          [ ${_TIMEOUT} ]      Timeout a simulation/synthesis after N seconds
-		-a|--adder_def < /abs/path >    [ ${_ADDER_DEF} ]   Use template to build adders
+		-h|--help                       $(_prt_cur_arg 'off') print this
+		-t|--test < test name >         $(_prt_cur_arg ${_TEST}) Test name is one of ( ${TEST_DIR_LIST} heavy_suite light_suite full_suite vtr_basic vtr_strong pre_commit )
+		-j|--nb_of_process < N >        $(_prt_cur_arg ${_NUMBER_OF_PROCESS}) Number of process requested to be used
+		-s|--sim_threads < N >          $(_prt_cur_arg ${_SIM_THREADS}) Use multithreaded simulation using N threads
+		-V|--vectors < N >              $(_prt_cur_arg ${_VECTORS}) Use N vectors to generate per simulation
+		-T|--timeout < N sec >          $(_prt_cur_arg ${_TIMEOUT}) Timeout a simulation/synthesis after N seconds
+		-a|--adder_def < /abs/path >    $(_prt_cur_arg ${_ADDER_DEF}) Use template to build adders
 
 	FLAGS:
-		-g|--generate_bench             [ ${_GENERATE_BENCH}| ]       Generate input and output vector for test
-		-o|--generate_output            [ ${_GENERATE_OUTPUT} ]       Generate output vector for test given its input vector
-		-c|--clean                      [ off ]       Clean temporary directory
-		-l|--limit_ressource            [ ${_LIMIT_RESSOURCE} ]       Force higher nice value and set hard limit for hardware memory to force swap more ***not always respected by system
-		-v|--valgrind                   [ ${_VALGRIND} ]       Run with valgrind
-		-B|--best_coverage_off          [ ${_BEST_COVERAGE_OFF} ]        Generate N vectors from --vector size batches until best node coverage is achieved
-		-b|--batch_sim                  [ ${_BATCH_SIM} ]       Use Batch mode multithreaded simulation
+		-g|--generate_bench             $(_prt_cur_arg ${_GENERATE_BENCH}) Generate input and output vector for test
+		-o|--generate_output            $(_prt_cur_arg ${_GENERATE_OUTPUT}) Generate output vector for test given its input vector
+		-c|--clean                      $(_prt_cur_arg off ) Clean temporary directory
+		-l|--limit_ressource            $(_prt_cur_arg ${_LIMIT_RESSOURCE}) Force higher nice value and set hard limit for hardware memory to force swap more ***not always respected by system
+		-v|--valgrind                   $(_prt_cur_arg ${_VALGRIND}) Run with valgrind
+		-B|--best_coverage_off          $(_prt_cur_arg ${_BEST_COVERAGE_OFF}) Generate N vectors from --vector size batches until best node coverage is achieved
+		-b|--batch_sim                  $(_prt_cur_arg ${_BATCH_SIM}) Use Batch mode multithreaded simulation
+		-p|--perf                       $(_prt_cur_arg ${_USE_PERF}) Use Perf for monitoring execution
 
 "
 }
@@ -213,6 +221,7 @@ _low_ressource_flag=""
 _valgrind_flag=""
 _batch_sim_flag=""
 _use_best_coverage_flag=""
+_perf_flag=""
 
 # number type flags
 _vector_flag=""
@@ -227,9 +236,10 @@ function _set_if() {
 
 function _set_flag() {
 	_low_ressource_flag=$(_set_if ${_LIMIT_RESSOURCE} "--limit_ressource")
-	_valgrind_flag=$(_set_if ${_LIMIT_RESSOURCE} "--valgrind")
-	_batch_sim_flag=$(_set_if ${_LIMIT_RESSOURCE} "--batch")
-	_use_best_coverage_flag=$(_set_if ${_LIMIT_RESSOURCE} "--best_coverage")
+	_valgrind_flag=$(_set_if ${_VALGRIND} "--valgrind")
+	_batch_sim_flag=$(_set_if ${_BATCH_SIM} "--batch")
+	_use_best_coverage_flag=$(_set_if ${_BEST_COVERAGE_OFF} "--best_coverage")
+	_perf_flag=$(_set_if ${_USE_PERF} "--best_coverage")
 	
 	_vector_flag="-g ${_VECTORS}"
 	_timeout_flag="--time_limit ${_TIMEOUT}s"
@@ -328,6 +338,12 @@ function parse_args() {
 			;;-b|--batch_sim)			
 				_BATCH_SIM="on"
 				echo "Using Batch multithreaded simulation with -j threads"
+
+			;;-p|--perf)
+				_USE_PERF="on"
+				echo "Using perf for synthesis and simulation"
+				shift
+
 			;;*) 
 				echo "Unknown parameter passed: $1"
 				help 
