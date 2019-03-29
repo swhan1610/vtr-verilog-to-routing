@@ -15,6 +15,8 @@ THIS_SCRIPT=$(readlink -f $0)
 THIS_SCRIPT_EXEC=$(basename ${THIS_SCRIPT})
 
 ODIN_ROOT_DIR=$(dirname ${THIS_SCRIPT})
+VTR_ROOT_DIR=$(readlink -f ${ODIN_ROOT_DIR}/..)
+
 REGRESSION_DIR="${ODIN_ROOT_DIR}/regression_test/"
 BENCHMARK_DIR="${REGRESSION_DIR}/benchmark/"
 TEST_DIR_LIST=$(ls -d ${BENCHMARK_DIR}/*/ | sed "s/\/$//g" | xargs -n1 -I TEST_FILE /bin/bash -c 'printf "$(basename TEST_FILE) "')
@@ -22,10 +24,10 @@ NEW_RUN_DIR="${REGRESSION_DIR}/run001/"
 
 ##############################################
 # Arch Sweep Arrays to use during benchmarking
-DEFAULT_ARCH="${ODIN_ROOT_DIR}/../libs/libarchfpga/arch/sample_arch.xml"
-MEM_ARCH="${ODIN_ROOT_DIR}/../vtr_flow/arch/timing/k6_N10_mem32K_40nm.xml"
+DEFAULT_ARCH="${VTR_ROOT_DIR}/libs/libarchfpga/arch/sample_arch.xml"
+MEM_ARCH="${VTR_ROOT_DIR}/vtr_flow/arch/timing/k6_N10_mem32K_40nm.xml"
 SMALL_ARCH_SWEEP="${DEFAULT_ARCH} ${MEM_ARCH}"
-FULL_ARCH_SWEEP=$(find ${ODIN_ROOT_DIR}/../vtr_flow/arch/timing -maxdepth 1 | grep xml)
+FULL_ARCH_SWEEP=$(find ${VTR_ROOT_DIR}/vtr_flow/arch/timing -maxdepth 1 | grep xml)
 
 ##############################################
 # Include more generic names here for better vector generation
@@ -645,23 +647,23 @@ case "${_TEST}" in
 		;;
 
 	"vtr_basic")
-		cd ..
+		cd ${VTR_ROOT_DIR}
 		/usr/bin/perl run_reg_test.pl -j ${_NUMBER_OF_PROCESS} vtr_reg_basic
-		cd ODIN_II
+		cd ${ODIN_ROOT_DIR}
 		;;
 
 	"vtr_strong")
-		cd ..
+		cd ${VTR_ROOT_DIR}
 		/usr/bin/perl run_reg_test.pl -j ${_NUMBER_OF_PROCESS} vtr_reg_strong
-		cd ODIN_II
+		cd ${ODIN_ROOT_DIR}
 		;;
 
 	"pre_commit")
 		run_all
-		cd ..
+		cd ${VTR_ROOT_DIR}
 		/usr/bin/perl run_reg_test.pl -j ${_NUMBER_OF_PROCESS} vtr_reg_basic
 		/usr/bin/perl run_reg_test.pl -j ${_NUMBER_OF_PROCESS} vtr_reg_strong
-		cd ODIN_II
+		cd ${ODIN_ROOT_DIR}
 		;;
 
 	*)
