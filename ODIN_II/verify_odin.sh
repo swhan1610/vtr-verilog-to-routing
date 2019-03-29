@@ -15,10 +15,10 @@ THIS_SCRIPT=$(readlink -f $0)
 THIS_SCRIPT_EXEC=$(basename ${THIS_SCRIPT})
 
 ODIN_ROOT_DIR=$(dirname ${THIS_SCRIPT})
-REGRESSION_DIR="${ODIN_ROOT_DIR}/regression_test"
-BENCHMARK_DIR="${REGRESSION_DIR}/benchmark"
-TEST_DIR_LIST=$(find ${BENCHMARK_DIR} -mindepth 1 -maxdepth 1 -type d | cut -d '/' -f 3 | tr '\n' ' ')  
-NEW_RUN_DIR=${REGRESSION_DIR}/run001
+REGRESSION_DIR="${ODIN_ROOT_DIR}/regression_test/"
+BENCHMARK_DIR="${REGRESSION_DIR}/benchmark/"
+TEST_DIR_LIST=$(ls -d ${BENCHMARK_DIR}/*/ | sed "s/\/$//g" | xargs -n1 -I TEST_FILE /bin/bash -c 'printf "$(basename TEST_FILE) "')
+NEW_RUN_DIR="${REGRESSION_DIR}/run001/"
 
 ##############################################
 # Arch Sweep Arrays to use during benchmarking
@@ -32,6 +32,22 @@ FULL_ARCH_SWEEP=$(find ${ODIN_ROOT_DIR}/../vtr_flow/arch/timing -maxdepth 1 | gr
 HOLD_LOW="-L reset rst"
 HOLD_HIGH="-H we"
 HOLD_PARAM="${HOLD_LOW} ${HOLD_HIGH}"
+
+##############
+# defaults
+_TEST=""
+_NUMBER_OF_PROCESS="1"
+_SIM_THREADS="1"
+_VECTORS="100"
+_TIMEOUT="1200"
+_ADDER_DEF="default"
+
+_GENERATE_BENCH="off"
+_GENERATE_OUTPUT="off"
+_LIMIT_RESSOURCE="off"
+_VALGRIND="off"
+_BEST_COVERAGE_OFF="on"
+_BATCH_SIM="off"
 
 ##############################################
 # Exit Functions
@@ -73,21 +89,21 @@ printf "
 		-h|--help                                     print this
 
 	OPTIONS:
-		-t|--test < test name >         [ null ]      Test name is one of ( ${TEST_DIR_LIST} heavy_suite light_suite full_suite vtr_basic vtr_strong pre_commit )
-		-j|--nb_of_process < N >        [ 1 ]         Number of process requested to be used
-		-s|--sim_threads < N >          [ 1 ]         Use multithreaded simulation using N threads
-		-V|--vectors < N >              [ 100 ]       Use N vectors to generate per simulation
-		-T|--timeout < N sec >          [ 1200 ]      Timeout a simulation/synthesis after N seconds
-		-a|--adder_def < /abs/path >    [ default ]   Use template to build adders
+		-t|--test < test name >         [ ${_TEST} ]      Test name is one of ( ${TEST_DIR_LIST} heavy_suite light_suite full_suite vtr_basic vtr_strong pre_commit )
+		-j|--nb_of_process < N >        [ ${_NUMBER_OF_PROCESS} ]         Number of process requested to be used
+		-s|--sim_threads < N >          [ ${_SIM_THREADS} ]         Use multithreaded simulation using N threads
+		-V|--vectors < N >              [ ${_VECTORS} ]       Use N vectors to generate per simulation
+		-T|--timeout < N sec >          [ ${_TIMEOUT} ]      Timeout a simulation/synthesis after N seconds
+		-a|--adder_def < /abs/path >    [ ${_ADDER_DEF} ]   Use template to build adders
 
 	FLAGS:
-		-g|--generate_bench             [ off ]       Generate input and output vector for test
-		-o|--generate_output            [ off ]       Generate output vector for test given its input vector
+		-g|--generate_bench             [ ${_GENERATE_BENCH}| ]       Generate input and output vector for test
+		-o|--generate_output            [ ${_GENERATE_OUTPUT} ]       Generate output vector for test given its input vector
 		-c|--clean                      [ off ]       Clean temporary directory
-		-l|--limit_ressource            [ off ]       Force higher nice value and set hard limit for hardware memory to force swap more ***not always respected by system
-		-v|--valgrind                   [ off ]       Run with valgrind
-		-B|--best_coverage_off          [ on ]        Generate N vectors from --vector size batches until best node coverage is achieved
-		-b|--batch_sim                  [ off ]       Use Batch mode multithreaded simulation
+		-l|--limit_ressource            [ ${_LIMIT_RESSOURCE} ]       Force higher nice value and set hard limit for hardware memory to force swap more ***not always respected by system
+		-v|--valgrind                   [ ${_VALGRIND} ]       Run with valgrind
+		-B|--best_coverage_off          [ ${_BEST_COVERAGE_OFF} ]        Generate N vectors from --vector size batches until best node coverage is achieved
+		-b|--batch_sim                  [ ${_BATCH_SIM} ]       Use Batch mode multithreaded simulation
 
 "
 }
@@ -190,21 +206,6 @@ function flag_is_number() {
 	esac
 }
 
-##############
-# defaults
-_TEST=""
-_NUMBER_OF_PROCESS="1"
-_SIM_THREADS="1"
-_VECTORS="100"
-_TIMEOUT="1200"
-_ADDER_DEF="default"
-
-_GENERATE_BENCH="off"
-_GENERATE_OUTPUT="off"
-_LIMIT_RESSOURCE="off"
-_VALGRIND="off"
-_BEST_COVERAGE_OFF="on"
-_BATCH_SIM="off"
 
 # boolean type flags
 _low_ressource_flag=""
