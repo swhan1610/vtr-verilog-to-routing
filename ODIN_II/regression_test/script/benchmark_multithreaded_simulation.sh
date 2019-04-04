@@ -55,15 +55,27 @@ exec_n_times() {
 
 EXECUTION_COUNT="4"
 VECTOR_COUNT="3000"
-TIMEOUT="7200"
-NUMBER_OF_THREAD="30"
-DEFAULT_ARGS="--test heavy_suite --perf --generate_bench --vectors ${VECTOR_COUNT} --timeout ${TIMEOUT} --best_coverage_off"
+TIMEOUT="43200" #12 hours
+NUMBER_OF_THREAD="8"
+DEFAULT_ARGS="${ODIN_BENCHMARK_EXEC} --test heavy_suite --perf --generate_bench --vectors ${VECTOR_COUNT} --timeout ${TIMEOUT} --best_coverage_off --force_sim"
 
 #################################################
 # START !
 
-exec_n_times "${EXECUTION_COUNT}" "single_thread" "${ODIN_BENCHMARK_EXEC} ${DEFAULT_ARGS}"
+# set stack size
+ulimit -s unlimited
 
-exec_n_times "${EXECUTION_COUNT}" "batch_thread" "${ODIN_BENCHMARK_EXEC} ${DEFAULT_ARGS} --sim_threads ${NUMBER_OF_THREAD} --batch_sim"
+#increase open file limit
+ulimit -n 8096
 
-exec_n_times "${EXECUTION_COUNT}" "multi_thread" "${ODIN_BENCHMARK_EXEC} ${DEFAULT_ARGS} --sim_threads ${NUMBER_OF_THREAD}"
+#increase user process limit
+ulimit -u $(( 4 * 1024 * 1024 ))
+
+#increase max locked memory
+ulimit -l $(( 400 * 1024 ))
+
+exec_n_times "${EXECUTION_COUNT}" "single_thread" "${DEFAULT_ARGS}"
+
+exec_n_times "${EXECUTION_COUNT}" "batch_thread" "${DEFAULT_ARGS} --sim_threads ${NUMBER_OF_THREAD} --batch_sim"
+
+exec_n_times "${EXECUTION_COUNT}" "multi_thread" "${DEFAULT_ARGS} --sim_threads ${NUMBER_OF_THREAD}"

@@ -52,6 +52,7 @@ _VALGRIND="off"
 _BEST_COVERAGE_OFF="on"
 _BATCH_SIM="off"
 _USE_PERF="off"
+_FORCE_SIM="off"
 
 ##############################################
 # Exit Functions
@@ -116,6 +117,7 @@ printf "Called program with $INPUT
 		-B|--best_coverage_off          $(_prt_cur_arg ${_BEST_COVERAGE_OFF}) Generate N vectors from --vector size batches until best node coverage is achieved
 		-b|--batch_sim                  $(_prt_cur_arg ${_BATCH_SIM}) Use Batch mode multithreaded simulation
 		-p|--perf                       $(_prt_cur_arg ${_USE_PERF}) Use Perf for monitoring execution
+		-f|--force_sim					$(_prt_cur_arg ${_FORCE_SIM}) Force simulation
 
 "
 }
@@ -266,7 +268,8 @@ function parse_args() {
 		## directory in benchmark
 			;;-t|--test)
 				# this is handled down stream
-				if [ "_$2" == "_" ]; then 
+				if [ "_$2" == "_" ]
+				then 
 					echo "empty argument for $1"
 					exit 120
 				fi
@@ -278,14 +281,16 @@ function parse_args() {
 		## absolute path
 			;;-a|--adder_def)
 
-				if [ "_$2" == "_" ]; then 
+				if [ "_$2" == "_" ]
+				then 
 					echo "empty argument for $1"
 					exit 120
 				fi
 				
 				_ADDER_DEF=$2
 
-				if [ "${_ADDER_DEF}" != "default" ] && [ "${_ADDER_DEF}" != "optimized" ] && [ ! -f "$(readlink -f ${_ADDER_DEF})" ]; then
+				if [ "${_ADDER_DEF}" != "default" ] && [ "${_ADDER_DEF}" != "optimized" ] && [ ! -f "$(readlink -f ${_ADDER_DEF})" ]
+				then
 					echo "invalid adder definition passed in ${_ADDER_DEF}"
 					exit 120
 				fi
@@ -338,6 +343,10 @@ function parse_args() {
 				_BEST_COVERAGE_OFF="off"
 				echo "turning off using best coverage for benchmark vector generation"
 
+			;;-f|--force_sim)
+				_FORCE_SIM="on"
+				echo "Forcing Simulation for tests"
+
 			;;-b|--batch_sim)			
 				_BATCH_SIM="on"
 				echo "Using Batch multithreaded simulation with -j threads"
@@ -345,7 +354,6 @@ function parse_args() {
 			;;-p|--perf)
 				_USE_PERF="on"
 				echo "Using perf for synthesis and simulation"
-				shift
 
 			;;*) 
 				echo "Unknown parameter passed: $1"
@@ -368,7 +376,8 @@ function sim() {
 	DEFAULT_CMD_PARAM="${_adder_definition_flag} ${_simulation_threads_flag} ${_batch_sim_flag}"
 
 
-	if [ ! -e "$1" ]; then
+	if [ ! -e "$1" ]
+	then
 		echo "invalid benchmark directory passed to simulation function $1"
 		ctrl_c
 	fi
@@ -428,19 +437,20 @@ function sim() {
 	bench_type=${benchmark_dir##*/}
 	echo " BENCHMARK IS: ${bench_type}"
 
-	if [ "_${with_custom_args}" == "_1" ]; then
+	if [ "_${with_custom_args}" == "_1" ]
+	then
 
 		global_odin_failure="${NEW_RUN_DIR}/odin_failures"
 
 		for dir in ${benchmark_dir}/*
 		do
-			if [ -e ${dir}/odin.args ]; then
+			if [ -e ${dir}/odin.args ]
+			then
 				test_name=${dir##*/}
 				TEST_FULL_REF="${bench_type}/${test_name}"
 
 				DIR="${NEW_RUN_DIR}/${bench_type}/$test_name"
 				blif_file="${DIR}/odin.blif"
-
 
 				#build commands
 				mkdir -p $DIR
@@ -451,7 +461,9 @@ function sim() {
 											${_timeout_flag}
 											${_low_ressource_flag}
 											${_valgrind_flag}"
-				if [ "${_USE_PERF}" == "on" ]; then
+											
+				if [ "${_USE_PERF}" == "on" ]
+				then
 					wrapper_odin_command="${wrapper_odin_command} ${_perf_flag} ${DIR}/perf.data"
 				fi
 
@@ -513,7 +525,8 @@ function sim() {
 											${_low_ressource_flag}
 											${_valgrind_flag}"
 
-				if [ "${_USE_PERF}" == "on" ]; then
+				if [ "${_USE_PERF}" == "on" ]
+				then
 					wrapper_synthesis_command="${wrapper_synthesis_command} ${_perf_flag} ${DIR}/perf.data"
 				fi
 
@@ -525,11 +538,14 @@ function sim() {
 
 				echo $(echo "${wrapper_synthesis_command} ${synthesis_command}"  | tr '\n' ' ' | tr -s ' ') > ${DIR}/cmd_param
 
-				if [ "_$with_sim" == "_1" ] || [ -e ${input_vector_file} ]
+				if [ "${_FORCE_SIM}" == "on" ] || [ -e ${input_vector_file} ]
 				then
 					#force trigger simulation if input file exist
 					with_sim="1"
+				fi
 
+				if [ "_$with_sim" == "_1" ]
+				then
 					wrapper_simulation_command="${WRAPPER_EXEC}
 											--log_file ${DIR}/simulation.log
 											--test_name ${TEST_FULL_REF}
@@ -538,7 +554,8 @@ function sim() {
 											${_low_ressource_flag}
 											${_valgrind_flag}"
 
-					if [ "${_USE_PERF}" == "on" ]; then
+					if [ "${_USE_PERF}" == "on" ]
+					then
 						wrapper_simulation_command="${wrapper_simulation_command} ${_perf_flag} ${DIR}/perf.data"
 					fi
 
@@ -548,19 +565,23 @@ function sim() {
 											-sim_dir ${DIR}
 											${HOLD_PARAM}"
 
-					if [ "${_GENERATE_BENCH}" == "on" ]; then
+					if [ "${_GENERATE_BENCH}" == "on" ]
+					then
 						simulation_command="${simulation_command} ${_use_best_coverage_flag} ${_vector_flag}"
-
-					elif [ -e ${input_vector_file} ]; then
-						simulation_command="${simulation_command} -t ${input_vector_file}"
-
-						if [ "${_GENERATE_OUTPUT}" != "on" ] && [ -e ${output_vector_file} ]; then
-							simulation_command="${simulation_command} -T ${output_vector_file}"
-						fi
-						
 					else
-						simulation_command="${simulation_command} ${_vector_flag}"
+						if [ -e ${input_vector_file} ]
+						then
+							simulation_command="${simulation_command} -t ${input_vector_file}"
 
+							if [ "${_GENERATE_OUTPUT}" != "on" ] && [ -e ${output_vector_file} ]
+							then
+								simulation_command="${simulation_command} -T ${output_vector_file}"
+							fi
+							
+						else
+							simulation_command="${simulation_command} ${_vector_flag}"
+
+						fi
 					fi
 
 					echo $(echo "${wrapper_simulation_command} ${simulation_command}" | tr '\n' ' ' | tr -s ' ') > ${DIR}/sim_param
@@ -624,7 +645,8 @@ START=`get_current_time`
 parse_args $INPUT
 _set_flag
 
-if [ "_${_TEST}" == "_" ]; then
+if [ "_${_TEST}" == "_" ]
+then
 	echo "No input test!"
 	help
 	print_time_since $START
@@ -668,13 +690,15 @@ case "${_TEST}" in
 		;;
 
 	*)
-		if [ ! -e ${BENCHMARK_DIR}/${_TEST} ]; then
+		if [ ! -e ${BENCHMARK_DIR}/${_TEST} ]
+		then
 			echo "${BENCHMARK_DIR}/${_TEST} Not Found! exiting."
 			config_help
 			ctrl_c
 		fi
 
-		if [ ! -e ${BENCHMARK_DIR}/${_TEST}/config.txt ]; then
+		if [ ! -e ${BENCHMARK_DIR}/${_TEST}/config.txt ]
+		then
 			echo "no config file found in the directory."
 			echo "please make sure a config.txt exist"
 			config_help

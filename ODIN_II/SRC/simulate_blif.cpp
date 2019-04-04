@@ -1,4 +1,5 @@
-/*
+/*	number_of_workers = std::max(1, global_args.parralelized_simulation.value());
+
 Permission is hereby granted, free of charge, to any person
 obtaining a copy of this software and associated documentation
 FILEs (the "Software"), to deal in the Software without
@@ -417,7 +418,7 @@ sim_data_t *init_simulation(netlist_t *netlist)
 {
 	//for multithreading
 	used_time = std::numeric_limits<double>::max();
-	number_of_workers = std::max(1, global_args.parralelized_simulation.value());
+	number_of_workers = global_args.parralelized_simulation.value();
 	if(number_of_workers >1 )
 		warning_message(SIMULATION_ERROR,-1,-1,"Executing simulation with maximum of %ld threads", number_of_workers);
 	
@@ -917,16 +918,25 @@ static void simulate_cycle(int cycle, stages_t *s)
 
 		std::vector<std::thread> workers;
 		int previous_end = 0;
+
+		int nodes_per_thread = s->counts[i]/number_of_workers;
+		int remainder_nodes_per_thread = s->counts[i]%number_of_workers;
+
 		for (int id =0; id < number_of_workers; id++)
 		{
 			int start = previous_end;
-			int end = start + s->counts[i]/number_of_workers + ((id < s->counts[i]%number_of_workers)? 1: 0); 
-			previous_end = end;
+			int end = start + nodes_per_thread + ((remainder_nodes_per_thread > 0)? 1: 0);
 
-			if(id < number_of_workers-1) // if child threads
-				workers.push_back(std::thread(compute_and_store_part,start,end,i,s,cycle));
-			else
-				compute_and_store_part(start,end,i,s,cycle);
+			remainder_nodes_per_thread -= 1;
+			previous_end = end + 1;
+
+			if( (end-start) > 0 )
+			{
+				if(id < number_of_workers-1) // if child threads
+					workers.push_back(std::thread(compute_and_store_part,start,end,i,s,cycle));
+				else
+					compute_and_store_part(start,end,i,s,cycle);
+			}
 
 		}	
 
