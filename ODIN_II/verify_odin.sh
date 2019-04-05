@@ -44,6 +44,8 @@ _SIM_THREADS="1"
 _VECTORS="100"
 _TIMEOUT="1200"
 _ADDER_DEF="default"
+_SIM_COUNT="1"
+_RUN_DIR_OVERRIDE=""
 
 _GENERATE_BENCH="off"
 _GENERATE_OUTPUT="off"
@@ -52,7 +54,6 @@ _VALGRIND="off"
 _BEST_COVERAGE_OFF="on"
 _BATCH_SIM="off"
 _USE_PERF="off"
-_FORCE_SIM="off"
 
 ##############################################
 # Exit Functions
@@ -107,6 +108,8 @@ printf "Called program with $INPUT
 		-V|--vectors < N >              $(_prt_cur_arg ${_VECTORS}) Use N vectors to generate per simulation
 		-T|--timeout < N sec >          $(_prt_cur_arg ${_TIMEOUT}) Timeout a simulation/synthesis after N seconds
 		-a|--adder_def < /abs/path >    $(_prt_cur_arg ${_ADDER_DEF}) Use template to build adders
+		-n|--simulation_count < N >     $(_prt_cur_arg ${_SIM_COUNT}) Allow to run the simulation N times to benchmark the simulator
+		-d|--output_dir < /abs/path >   $(_prt_cur_arg ${_RUN_DIR_OVERRIDE}) Change the run directory output
 
 	FLAGS:
 		-g|--generate_bench             $(_prt_cur_arg ${_GENERATE_BENCH}) Generate input and output vector for test
@@ -117,7 +120,6 @@ printf "Called program with $INPUT
 		-B|--best_coverage_off          $(_prt_cur_arg ${_BEST_COVERAGE_OFF}) Generate N vectors from --vector size batches until best node coverage is achieved
 		-b|--batch_sim                  $(_prt_cur_arg ${_BATCH_SIM}) Use Batch mode multithreaded simulation
 		-p|--perf                       $(_prt_cur_arg ${_USE_PERF}) Use Perf for monitoring execution
-		-f|--force_sim					$(_prt_cur_arg ${_FORCE_SIM}) Force simulation
 
 "
 }
@@ -159,19 +161,32 @@ function print_time_since() {
 ################################################
 # Init Directories and cleanup
 function init_temp() {
-	last_run=$(find ${REGRESSION_DIR}/run* -maxdepth 0 -type d 2>/dev/null | tail -1 )
+	OUTPUT_DIRECTORY=${REGRESSION_DIR}
+	if [ "_${_RUN_DIR_OVERRIDE}" != "_" ] && [ -d "${_RUN_DIR_OVERRIDE}" ]
+	then
+		OUTPUT_DIRECTORY=${_RUN_DIR_OVERRIDE}
+	fi
+
+	last_run=$(find ${OUTPUT_DIRECTORY}/run* -maxdepth 0 -type d 2>/dev/null | tail -1 )
+	n="1"
 	if [ "_${last_run}" != "_" ]
 	then
-		last_run_id=${last_run##${REGRESSION_DIR}/run}
-		n=$(echo $last_run_id | awk '{print $0 + 1}')
-		NEW_RUN_DIR=${REGRESSION_DIR}/run$(printf "%03d" $n)
+		n=$(echo ${last_run##${OUTPUT_DIRECTORY}/run} | awk '{print $0 + 1}')
 	fi
+
+	NEW_RUN_DIR=${OUTPUT_DIRECTORY}/run$(printf "%03d" $n)
 	echo "running benchmark @${NEW_RUN_DIR}"
 	mkdir -p ${NEW_RUN_DIR}
 }
 
 function cleanup_temp() {
-	for runs in ${REGRESSION_DIR}/run*
+	OUTPUT_DIRECTORY=${REGRESSION_DIR}
+	if [ "_${_RUN_DIR_OVERRIDE}" != "_" ]
+	then
+		OUTPUT_DIRECTORY=${_RUN_DIR_OVERRIDE}
+	fi
+
+	for runs in ${OUTPUT_DIRECTORY}/run*
 	do 
 		rm -Rf ${runs}
 	done
@@ -297,6 +312,24 @@ function parse_args() {
 
 				shift
 
+			;;-d|--output_dir)
+
+				if [ "_$2" == "_" ]
+				then 
+					echo "empty argument for $1"
+					exit 120
+				fi
+				
+				_RUN_DIR_OVERRIDE=$2
+
+				if [ ! -d "${_RUN_DIR_OVERRIDE}" ]
+				then
+					echo "Directory ${_RUN_DIR_OVERRIDE} does not exist"
+					exit 120
+				fi
+
+				shift
+
 		## number
 			;;-j|--nb_of_process)
 				_NUMBER_OF_PROCESS=$(flag_is_number $1 $2)
@@ -316,6 +349,11 @@ function parse_args() {
 			;;-T|--timeout)
 				_TIMEOUT=$(flag_is_number $1 $2)
 				echo "Using timeout [$2] seconds for synthesis and simulation"
+				shift
+
+			;;-n|--simulation_count)
+				_SIM_COUNT=$(flag_is_number $1 $2)
+				echo "Simulating [$2] times"
 				shift
 
 		# Boolean flags
@@ -342,10 +380,6 @@ function parse_args() {
 			;;-B|--best_coverage_off)	
 				_BEST_COVERAGE_OFF="off"
 				echo "turning off using best coverage for benchmark vector generation"
-
-			;;-f|--force_sim)
-				_FORCE_SIM="on"
-				echo "Forcing Simulation for tests"
 
 			;;-b|--batch_sim)			
 				_BATCH_SIM="on"
@@ -375,8 +409,10 @@ function sim() {
 	threads=${_NUMBER_OF_PROCESS}
 	DEFAULT_CMD_PARAM="${_adder_definition_flag} ${_simulation_threads_flag} ${_batch_sim_flag}"
 
+	_SYNTHESIS="on"
+	_SIMULATE="off"
 
-	if [ ! -e "$1" ]
+	if [ ! -d "$1" ]
 	then
 		echo "invalid benchmark directory passed to simulation function $1"
 		ctrl_c
@@ -415,7 +451,7 @@ function sim() {
 				;;
 
 			--simulate)
-				with_sim=1
+				_SIMULATE="on"
 				;;
 
 			--no_threading)
@@ -488,9 +524,18 @@ function sim() {
 		global_synthesis_failure="${NEW_RUN_DIR}/synthesis_failures"
 		global_simulation_failure="${NEW_RUN_DIR}/simulation_failures"
 
-		for benchmark in ${benchmark_dir}/*.v
+
+		for benchmark in $(ls ${benchmark_dir} | grep -e ".v" -e ".blif")
 		do
+
 			basename=${benchmark%.v}
+			if [ "_${basename}" == "_" ]
+			then
+				# this is a blif file
+				_SYNTHESIS="off"
+				basename=${benchmark%.blif}
+			fi
+
 			test_name=${basename##*/}
 
 			input_vector_file="${basename}_input"
@@ -517,34 +562,33 @@ function sim() {
 				#build commands
 				mkdir -p $DIR
 
-				wrapper_synthesis_command="${WRAPPER_EXEC}
-											--log_file ${DIR}/synthesis.log
-											--test_name ${TEST_FULL_REF}
-											--failure_log ${global_synthesis_failure}.log
-											${_timeout_flag}
-											${_low_ressource_flag}
-											${_valgrind_flag}"
-
-				if [ "${_USE_PERF}" == "on" ]
+				###############################
+				# Synthesis
+				if [ "${_SYNTHESIS}" == "on" ]
 				then
-					wrapper_synthesis_command="${wrapper_synthesis_command} ${_perf_flag} ${DIR}/perf.data"
+					wrapper_synthesis_command="${WRAPPER_EXEC}
+												--log_file ${DIR}/synthesis.log
+												--test_name ${TEST_FULL_REF}
+												--failure_log ${global_synthesis_failure}.log
+												${_timeout_flag}
+												${_low_ressource_flag}
+												${_valgrind_flag}"
+
+					if [ "${_USE_PERF}" == "on" ]
+					then
+						wrapper_synthesis_command="${wrapper_synthesis_command} ${_perf_flag} ${DIR}/perf.data"
+					fi
+
+					synthesis_command="${DEFAULT_CMD_PARAM}
+										${arch_cmd}
+										-V ${benchmark}
+										-o ${blif_file}
+										-sim_dir ${DIR}"
+
+					echo $(echo "${wrapper_synthesis_command} ${synthesis_command}"  | tr '\n' ' ' | tr -s ' ') > ${DIR}/cmd_param
 				fi
 
-				synthesis_command="${DEFAULT_CMD_PARAM}
-									${arch_cmd}
-									-V ${benchmark}
-									-o ${blif_file}
-									-sim_dir ${DIR}"
-
-				echo $(echo "${wrapper_synthesis_command} ${synthesis_command}"  | tr '\n' ' ' | tr -s ' ') > ${DIR}/cmd_param
-
-				if [ "${_FORCE_SIM}" == "on" ] || [ -e ${input_vector_file} ]
-				then
-					#force trigger simulation if input file exist
-					with_sim="1"
-				fi
-
-				if [ "_$with_sim" == "_1" ]
+				if [ "${_SIMULATE}" == "on" ]
 				then
 					wrapper_simulation_command="${WRAPPER_EXEC}
 											--log_file ${DIR}/simulation.log
@@ -565,50 +609,54 @@ function sim() {
 											-sim_dir ${DIR}
 											${HOLD_PARAM}"
 
-					if [ "${_GENERATE_BENCH}" == "on" ]
+					if [ "${_GENERATE_BENCH}" == "on" ] || [ ! -f ${input_vector_file} ]
 					then
 						simulation_command="${simulation_command} ${_use_best_coverage_flag} ${_vector_flag}"
 					else
-						if [ -e ${input_vector_file} ]
+						simulation_command="${simulation_command} -t ${input_vector_file}"
+						if [ "${_GENERATE_OUTPUT}" == "off" ] && [ -f ${output_vector_file} ]
 						then
-							simulation_command="${simulation_command} -t ${input_vector_file}"
-
-							if [ "${_GENERATE_OUTPUT}" != "on" ] && [ -e ${output_vector_file} ]
-							then
-								simulation_command="${simulation_command} -T ${output_vector_file}"
-							fi
-							
-						else
-							simulation_command="${simulation_command} ${_vector_flag}"
-
+							simulation_command="${simulation_command} -T ${output_vector_file}"
 						fi
 					fi
 
 					echo $(echo "${wrapper_simulation_command} ${simulation_command}" | tr '\n' ' ' | tr -s ' ') > ${DIR}/sim_param
 				fi
+
 			done
 		done
 
 		#synthesize the circuits
-		echo " ========= Synthesizing Circuits"
-		find ${NEW_RUN_DIR}/${bench_type}/ -name cmd_param | xargs -n1 -P$threads -I test_cmd ${SHELL} -c '$(cat test_cmd)'
-		mv_failed ${global_synthesis_failure}
-
-		if [ "_$with_sim" == "_1" ]
+		if [ "${_SYNTHESIS}" == "on" ]
 		then
-			#run the simulation
-			echo " ========= Simulating Circuits"
-			find ${NEW_RUN_DIR}/${bench_type}/ -name sim_param | xargs -n1 -P$threads -I sim_cmd ${SHELL} -c '$(cat sim_cmd)'
-			mv_failed ${global_simulation_failure}
+			echo " ========= Synthesizing Circuits"
+			find ${NEW_RUN_DIR}/${bench_type}/ -name cmd_param | xargs -n1 -P$threads -I test_cmd ${SHELL} -c '$(cat test_cmd)'
+			mv_failed ${global_synthesis_failure}
+		fi
+
+		if [ "${_SIMULATE}" == "on" ]
+		then
+			for i in $(seq 1 1 ${_SIM_COUNT}); do
+				#run the simulation
+				echo " ========= Simulating Circuits"
+				find ${NEW_RUN_DIR}/${bench_type}/ -name sim_param | xargs -n1 -P$threads -I sim_cmd ${SHELL} -c '$(cat sim_cmd)'
+				
+				# move the log
+				for sim_log in $(find ${NEW_RUN_DIR}/${bench_type}/ -name "simulation.log")
+				do
+					mv ${sim_log} "${sim_log}_${i}"
+				done
+
+				# move the failed runs
+				mv_failed ${global_simulation_failure}
+			done
 		fi
 
 	fi
-	
-
 }
 
+
 HEAVY_LIST=(
-	"syntax"
 	"full"
 	"large"
 )
@@ -617,7 +665,8 @@ LIGHT_LIST=(
 	"operators"
 	"arch"
 	"other"
-	"micro"
+	"micro"	
+	"syntax"
 )
 
 function run_light_suite() {

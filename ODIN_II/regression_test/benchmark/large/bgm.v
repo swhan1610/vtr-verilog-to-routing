@@ -1,4 +1,5 @@
-// DEFINES
+MY_BENCH_BASENAME="simulator_bm"
+MY_BENCH="${BENCHMARK_BASE_DIR}/${MY_BENCH_BASENAME}"// DEFINES
 `define BITS 32         // Bit width of the operands
 `define NumPath 34     
  

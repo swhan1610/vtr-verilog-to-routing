@@ -1,15 +1,8 @@
 #!/bin/bash
-
-#!/bin/bash
 #1
 trap ctrl_c INT SIGINT SIGTERM
 SHELL=/bin/bash
 QUIT=0
-FAILURE=0
-
-##############################################
-# grab the input args
-INPUT=$@
 
 ##############################################
 # grab the absolute Paths
@@ -19,8 +12,8 @@ THIS_SCRIPT_DIR=$(dirname ${THIS_SCRIPT})
 
 ODIN_ROOT_DIR="$(readlink -f ${THIS_SCRIPT_DIR}/../..)"
 ODIN_BENCHMARK_EXEC="${ODIN_ROOT_DIR}/verify_odin.sh"
-BM_DIR="${ODIN_ROOT_DIR}/multithreaded_bm_results"
 RESULT_DIR="${ODIN_ROOT_DIR}/regression_test"
+
 
 function ctrl_c() {
 	trap '' INT SIGINT SIGTERM
@@ -28,54 +21,46 @@ function ctrl_c() {
 	while [ "${QUIT}" != "0" ]
 	do
 		echo "** Benchmark TEST EXITED FORCEFULLY **"
-		pkill $(basename ${ODIN_BENCHMARK_EXEC}) &> /dev/null
+		pkill -2 verify_odin.sh &> /dev/null
 		#should be dead by now
 		exit 120
 	done
 }
 
-exec_n_times() {
-    EXEC_N_TIMES=$1
-    BENCH_NAME=$2
-    ARGS="${@:3}"
-
-    /bin/bash -c "${ODIN_BENCHMARK_EXEC} --clean"
-
-    for i in $(seq 1 1 ${EXEC_N_TIMES}); do
-        /bin/bash -c "${ARGS}"
-    done
-
-    mkdir -p "${BM_DIR}/${BENCH_NAME}"
-
-    for i in $(seq 1 1 ${EXEC_N_TIMES}); do
-        mv "${RESULT_DIR}/run$(printf "%03d" ${i})" "${BM_DIR}/${BENCH_NAME}"
-    done
-}
-
-
-EXECUTION_COUNT="4"
-VECTOR_COUNT="3000"
+EXECUTION_COUNT="3"
+VECTOR_COUNT="1000"
 TIMEOUT="43200" #12 hours
 NUMBER_OF_THREAD="8"
-DEFAULT_ARGS="${ODIN_BENCHMARK_EXEC} --test heavy_suite --perf --generate_bench --vectors ${VECTOR_COUNT} --timeout ${TIMEOUT} --best_coverage_off --force_sim"
+
+
+DEFAULT_ARGS="\
+    --simulation_count ${EXECUTION_COUNT} \
+    --test ${MY_BENCH_BASENAME} \
+    --perf \
+    --generate_bench \
+    --vectors ${VECTOR_COUNT} \
+    --timeout ${TIMEOUT} \
+    --best_coverage_off \
+"
 
 #################################################
 # START !
 
-# set stack size
+
 ulimit -s unlimited
-
-#increase open file limit
 ulimit -n 8096
-
-#increase user process limit
-ulimit -u $(( 4 * 1024 * 1024 ))
-
-#increase max locked memory
+ulimit -u $(( 8 * 1024 * 1024 ))
 ulimit -l $(( 400 * 1024 ))
+# 
+MY_DIR="${RESULT_DIR}/single_thread"
+rm -Rf ${MY_DIR} && mkdir -p ${MY_DIR} &&
+/bin/bash -c "${ODIN_BENCHMARK_EXEC} ${DEFAULT_ARGS} --output_dir ${MY_DIR}"
+# 
+MY_DIR="${RESULT_DIR}/multi_thread"
+rm -Rf ${MY_DIR} && mkdir -p ${MY_DIR} &&
+/bin/bash -c "${ODIN_BENCHMARK_EXEC} ${DEFAULT_ARGS} --output_dir ${MY_DIR} --sim_threads ${NUMBER_OF_THREAD}"
+# 
+MY_DIR="${RESULT_DIR}/batch_thread"
+rm -Rf ${MY_DIR} && mkdir -p ${MY_DIR} &&
+/bin/bash -c "${ODIN_BENCHMARK_EXEC} ${DEFAULT_ARGS} --output_dir ${MY_DIR} --sim_threads ${NUMBER_OF_THREAD} --batch_sim"
 
-exec_n_times "${EXECUTION_COUNT}" "single_thread" "${DEFAULT_ARGS}"
-
-exec_n_times "${EXECUTION_COUNT}" "batch_thread" "${DEFAULT_ARGS} --sim_threads ${NUMBER_OF_THREAD} --batch_sim"
-
-exec_n_times "${EXECUTION_COUNT}" "multi_thread" "${DEFAULT_ARGS} --sim_threads ${NUMBER_OF_THREAD}"
