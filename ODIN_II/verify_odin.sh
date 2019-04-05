@@ -546,6 +546,9 @@ function sim() {
 					_SYNTHESIS="off"
 					basename=${benchmark%.blif}
 				;;
+				*)
+					continue
+				;;
 			esac
 
 			test_name=${basename##*/}
