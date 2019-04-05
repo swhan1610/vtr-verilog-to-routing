@@ -54,6 +54,7 @@ _VALGRIND="off"
 _BEST_COVERAGE_OFF="on"
 _BATCH_SIM="off"
 _USE_PERF="off"
+_FORCE_SIM="off"
 
 ##############################################
 # Exit Functions
@@ -120,6 +121,7 @@ printf "Called program with $INPUT
 		-B|--best_coverage_off          $(_prt_cur_arg ${_BEST_COVERAGE_OFF}) Generate N vectors from --vector size batches until best node coverage is achieved
 		-b|--batch_sim                  $(_prt_cur_arg ${_BATCH_SIM}) Use Batch mode multithreaded simulation
 		-p|--perf                       $(_prt_cur_arg ${_USE_PERF}) Use Perf for monitoring execution
+		-f|--force_simulate             $(_prt_cur_arg ${_FORCE_SIM}) Use Perf for monitoring execution
 
 "
 }
@@ -388,6 +390,10 @@ function parse_args() {
 			;;-p|--perf)
 				_USE_PERF="on"
 				echo "Using perf for synthesis and simulation"
+			
+			;;-f|--force_simulate)   
+				_FORCE_SIM="on"
+				echo "Forcing Simulation"         
 
 			;;*) 
 				echo "Unknown parameter passed: $1"
@@ -410,7 +416,7 @@ function sim() {
 	DEFAULT_CMD_PARAM="${_adder_definition_flag} ${_simulation_threads_flag} ${_batch_sim_flag}"
 
 	_SYNTHESIS="on"
-	_SIMULATE="off"
+	_SIMULATE=${_FORCE_SIM}
 
 	if [ ! -d "$1" ]
 	then
@@ -527,14 +533,20 @@ function sim() {
 
 		for benchmark in $(ls ${benchmark_dir} | grep -e ".v" -e ".blif")
 		do
-
-			basename=${benchmark%.v}
-			if [ "_${basename}" == "_" ]
-			then
-				# this is a blif file
-				_SYNTHESIS="off"
-				basename=${benchmark%.blif}
-			fi
+			benchmark="${benchmark_dir}/${benchmark}"
+			basename=""
+			case "${benchmark}" in
+				*.v)
+					# this is a blif file
+					_SYNTHESIS="on"
+					basename=${benchmark%.v}
+				;;
+				*.blif)
+					# this is a blif file
+					_SYNTHESIS="off"
+					basename=${benchmark%.blif}
+				;;
+			esac
 
 			test_name=${basename##*/}
 

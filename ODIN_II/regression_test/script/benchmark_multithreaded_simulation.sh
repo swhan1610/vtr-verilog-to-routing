@@ -35,12 +35,13 @@ NUMBER_OF_THREAD="8"
 
 DEFAULT_ARGS="\
     --simulation_count ${EXECUTION_COUNT} \
-    --test ${MY_BENCH_BASENAME} \
+    --test heavy_suite \
     --perf \
     --generate_bench \
     --vectors ${VECTOR_COUNT} \
     --timeout ${TIMEOUT} \
     --best_coverage_off \
+    --force_simulate \
 "
 
 #################################################
@@ -51,16 +52,35 @@ ulimit -s unlimited
 ulimit -n 8096
 ulimit -u $(( 8 * 1024 * 1024 ))
 ulimit -l $(( 400 * 1024 ))
-# 
+
 MY_DIR="${RESULT_DIR}/single_thread"
 rm -Rf ${MY_DIR} && mkdir -p ${MY_DIR} &&
 /bin/bash -c "${ODIN_BENCHMARK_EXEC} ${DEFAULT_ARGS} --output_dir ${MY_DIR}"
-# 
-MY_DIR="${RESULT_DIR}/multi_thread"
+
+NUMBER_OF_THREAD="32"
+MY_DIR="${RESULT_DIR}/multi_thread_${NUMBER_OF_THREAD}"
 rm -Rf ${MY_DIR} && mkdir -p ${MY_DIR} &&
 /bin/bash -c "${ODIN_BENCHMARK_EXEC} ${DEFAULT_ARGS} --output_dir ${MY_DIR} --sim_threads ${NUMBER_OF_THREAD}"
-# 
-MY_DIR="${RESULT_DIR}/batch_thread"
+
+MY_DIR="${RESULT_DIR}/batch_thread_${NUMBER_OF_THREAD}"
+rm -Rf ${MY_DIR} && mkdir -p ${MY_DIR} &&
+/bin/bash -c "${ODIN_BENCHMARK_EXEC} ${DEFAULT_ARGS} --output_dir ${MY_DIR} --sim_threads ${NUMBER_OF_THREAD} --batch_sim"
+
+NUMBER_OF_THREAD="16"
+MY_DIR="${RESULT_DIR}/multi_thread_${NUMBER_OF_THREAD}"
+rm -Rf ${MY_DIR} && mkdir -p ${MY_DIR} &&
+/bin/bash -c "${ODIN_BENCHMARK_EXEC} ${DEFAULT_ARGS} --output_dir ${MY_DIR} --sim_threads ${NUMBER_OF_THREAD}"
+
+MY_DIR="${RESULT_DIR}/batch_thread_${NUMBER_OF_THREAD}"
+rm -Rf ${MY_DIR} && mkdir -p ${MY_DIR} &&
+/bin/bash -c "${ODIN_BENCHMARK_EXEC} ${DEFAULT_ARGS} --output_dir ${MY_DIR} --sim_threads ${NUMBER_OF_THREAD} --batch_sim"
+
+NUMBER_OF_THREAD="8"
+MY_DIR="${RESULT_DIR}/multi_thread_${NUMBER_OF_THREAD}"
+rm -Rf ${MY_DIR} && mkdir -p ${MY_DIR} &&
+/bin/bash -c "${ODIN_BENCHMARK_EXEC} ${DEFAULT_ARGS} --output_dir ${MY_DIR} --sim_threads ${NUMBER_OF_THREAD}"
+
+MY_DIR="${RESULT_DIR}/batch_thread_${NUMBER_OF_THREAD}"
 rm -Rf ${MY_DIR} && mkdir -p ${MY_DIR} &&
 /bin/bash -c "${ODIN_BENCHMARK_EXEC} ${DEFAULT_ARGS} --output_dir ${MY_DIR} --sim_threads ${NUMBER_OF_THREAD} --batch_sim"
 
