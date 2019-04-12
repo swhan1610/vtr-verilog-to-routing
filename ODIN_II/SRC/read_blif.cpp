@@ -163,7 +163,7 @@ netlist_t *read_blif()
 	hard_block_models *models = create_hard_block_models();
 	printf("\n");
 	char buffer[READ_BLIF_BUFFER];
-	while (vtr::fgets(buffer, READ_BLIF_BUFFER, file) && read_tokens(buffer, models, file, output_nets_hash))
+	while (read_line_and_trim(buffer, READ_BLIF_BUFFER, file) && read_tokens(buffer, models, file, output_nets_hash))
 	{	// Print a progress bar indicating completeness.
 		position = print_progress_bar((++line_count)/(double)num_lines, position, 50, wall_time() - time);
 	}
@@ -260,7 +260,7 @@ operation_list assign_node_type_from_node_name(char * output_name)
 	if((start < end) && (end > 0))
 	{
 		// Stores the extracted string
-		char *extracted_string = (char*)vtr::calloc(end-start+2, sizeof(char));
+		char *extracted_string = (char*)odin_calloc(end-start+2, sizeof(char));
 		int i, j;
 		for(i = start + 1, j = 0; i < end; i++, j++)
 		{
@@ -278,7 +278,7 @@ operation_list assign_node_type_from_node_name(char * output_name)
 			}
 		}
 
-		vtr::free(extracted_string);
+		odin_free(extracted_string);
 	}
 	return result;
 }
@@ -299,10 +299,10 @@ void create_latch_node_and_driver(FILE *file, Hashtable *output_nets_hash)
 	while ((ptr = vtr::strtok (NULL, TOKENS, file, buffer)) != NULL)
 	{
 		if(input_token_count == 0)
-			names = (char**)vtr::malloc((sizeof(char*)));
+			names = (char**)odin_alloc((sizeof(char*)));
 		else
-			names = (char**)vtr::realloc(names, (sizeof(char*))* (input_token_count + 1));
-		names[input_token_count++] = vtr::strdup(ptr);
+			names = (char**)odin_realloc(names, (sizeof(char*))* (input_token_count + 1));
+		names[input_token_count++] = odin_strdup(ptr);
 	}
 
 	/* assigning the new_node */
@@ -313,13 +313,13 @@ void create_latch_node_and_driver(FILE *file, Hashtable *output_nets_hash)
 		{
 			char *clock_name = search_clock_name(file);
 			input_token_count = 5;
-			names = (char**)vtr::realloc(names, sizeof(char*) * input_token_count);
+			names = (char**)odin_realloc(names, sizeof(char*) * input_token_count);
 
-			if(clock_name) names[3] = vtr::strdup(clock_name);
+			if(clock_name) names[3] = odin_strdup(clock_name);
 			else           names[3] = NULL;
 
-			names[4] = vtr::strdup(names[2]);
-			names[2] = vtr::strdup("re");
+			names[4] = odin_strdup(names[2]);
+			names[2] = odin_strdup("re");
 		}
 		else
 		{
@@ -382,7 +382,7 @@ void create_latch_node_and_driver(FILE *file, Hashtable *output_nets_hash)
 	new_node->name = make_full_ref_name(names[1],NULL, NULL, NULL,-1);
 
 	/*add this node to blif_netlist as an ff (flip-flop) node */
-	blif_netlist->ff_nodes = (nnode_t **)vtr::realloc(blif_netlist->ff_nodes, sizeof(nnode_t*)*(blif_netlist->num_ff_nodes+1));
+	blif_netlist->ff_nodes = (nnode_t **)odin_realloc(blif_netlist->ff_nodes, sizeof(nnode_t*)*(blif_netlist->num_ff_nodes+1));
 	blif_netlist->ff_nodes[blif_netlist->num_ff_nodes++] = new_node;
 	new_node->file_number = current_parse_file;
 	new_node->line_number = line_count;
@@ -400,8 +400,8 @@ void create_latch_node_and_driver(FILE *file, Hashtable *output_nets_hash)
 	output_nets_hash->add(new_node->name, new_net);
 
 	/* Free the char** names */
-	vtr::free(names);
-	vtr::free(ptr);
+	odin_free(names);
+	odin_free(ptr);
 }
 
 /*---------------------------------------------------------------------------------------------
@@ -422,7 +422,8 @@ char* search_clock_name(FILE* file)
 	while(!found)
 	{
 		char buffer[READ_BLIF_BUFFER];
-		vtr::fgets(buffer,READ_BLIF_BUFFER,file);
+		if(! read_line_and_trim(buffer,READ_BLIF_BUFFER,file))
+			break;
 
 		// not sure if this is needed
 		if(feof(file))
@@ -439,8 +440,8 @@ char* search_clock_name(FILE* file)
 				/* store the inputs in array of string */
 				while((ptr = vtr::strtok (NULL, TOKENS, file, buffer)))
 				{
-					input_names = (char**)vtr::realloc(input_names,sizeof(char*) * (input_names_count + 1));
-					input_names[input_names_count++] = vtr::strdup(ptr);
+					input_names = (char**)odin_realloc(input_names,sizeof(char*) * (input_names_count + 1));
+					input_names[input_names_count++] = odin_strdup(ptr);
 				}
 			}
 			else if(!strcmp(ptr,".names") || !strcmp(ptr,".latch"))
@@ -452,7 +453,7 @@ char* search_clock_name(FILE* file)
 					{
 						if(!strcmp(ptr,input_names[i]))
 						{
-							vtr::free(input_names[i]);
+							odin_free(input_names[i]);
 							input_names[i] = input_names[--input_names_count];
 						}
 					}
@@ -468,7 +469,7 @@ char* search_clock_name(FILE* file)
 	fsetpos(file,&pos);
 
 	if (found) return input_names[0];
-	else       return vtr::strdup(DEFAULT_CLOCK_NAME);
+	else       return odin_strdup(DEFAULT_CLOCK_NAME);
 }
 
 
@@ -489,18 +490,18 @@ void create_hard_block_nodes(hard_block_models *models, FILE *file, Hashtable *o
 	char **names_parameters = NULL;
 	while ((token = vtr::strtok (NULL, TOKENS, file, buffer)) != NULL)
   	{
-		names_parameters          = (char**)vtr::realloc(names_parameters, sizeof(char*)*(count + 1));
-		names_parameters[count++] = vtr::strdup(token);
+		names_parameters          = (char**)odin_realloc(names_parameters, sizeof(char*)*(count + 1));
+		names_parameters[count++] = odin_strdup(token);
   	}
 
 	// Split the name parameters at the equals sign.
-	char **mappings = (char**)vtr::malloc(sizeof(char*) * count);
-	char **names    = (char**)vtr::malloc(sizeof(char*) * count);
+	char **mappings = (char**)odin_alloc(sizeof(char*) * count);
+	char **names    = (char**)odin_alloc(sizeof(char*) * count);
 	int i = 0;
 	for (i = 0; i < count; i++)
 	{
-		mappings[i] = vtr::strdup(strtok(names_parameters[i], "="));
-		names[i]    = vtr::strdup(strtok(NULL, "="));
+		mappings[i] = odin_strdup(strtok(names_parameters[i], "="));
+		names[i]    = odin_strdup(strtok(NULL, "="));
 	}
 
 	// Associate mappings with their connections.
@@ -510,9 +511,9 @@ void create_hard_block_nodes(hard_block_models *models, FILE *file, Hashtable *o
 	qsort(mappings,  count,  sizeof(char *), compare_hard_block_pin_names);
 
 	for(i = 0; i < count; i++)
-		vtr::free(names_parameters[i]);
+		odin_free(names_parameters[i]);
 
-	vtr::free(names_parameters);
+	odin_free(names_parameters);
 
 	// Index the mappings in a hard_block_ports struct.
 	hard_block_ports *ports = get_hard_block_ports(mappings, count);
@@ -535,7 +536,7 @@ void create_hard_block_nodes(hard_block_models *models, FILE *file, Hashtable *o
 	new_node->name = make_full_ref_name(buffer, NULL, NULL, NULL,-1);
 
 	// Determine the type of hard block.
-	char *subcircuit_name_prefix = vtr::strdup(subcircuit_name);
+	char *subcircuit_name_prefix = odin_strdup(subcircuit_name);
 	subcircuit_name_prefix[5] = '\0';
 	if (!strcmp(subcircuit_name, "multiply") || !strcmp(subcircuit_name_prefix, "mult_"))
 		new_node->type = MULTIPLY;
@@ -548,7 +549,7 @@ void create_hard_block_nodes(hard_block_models *models, FILE *file, Hashtable *o
 		new_node->type = MEMORY;
 		new_node->memory_directory = {};
 	}
-	vtr::free(subcircuit_name_prefix);
+	odin_free(subcircuit_name_prefix);
 
 	/* Add input and output ports to the new node. */
 	{
@@ -578,7 +579,7 @@ void create_hard_block_nodes(hard_block_models *models, FILE *file, Hashtable *o
   			error_message(NETLIST_ERROR, file_line_number, current_parse_file, "Invalid hard block mapping: %s", mapping);
 
 		npin_t *new_pin = allocate_npin();
-		new_pin->name = vtr::strdup(name);
+		new_pin->name = odin_strdup(name);
 		new_pin->type = INPUT;
 		new_pin->mapping = get_hard_block_port_name(mapping);
 
@@ -594,14 +595,14 @@ void create_hard_block_nodes(hard_block_models *models, FILE *file, Hashtable *o
   		if (!name) error_message(NETLIST_ERROR, file_line_number, current_parse_file,"Invalid hard block mapping: %s", model->outputs->names[i]);
 
 		npin_t *new_pin = allocate_npin();
-		new_pin->name = vtr::strdup(name);
+		new_pin->name = odin_strdup(name);
 		new_pin->type = OUTPUT;
 		new_pin->mapping = get_hard_block_port_name(mapping);
 
 		add_output_pin_to_node(new_node, new_pin, i);
 
 		nnet_t *new_net = allocate_nnet();
-		new_net->name = vtr::strdup(name);
+		new_net->name = odin_strdup(name);
 
 		add_driver_pin_to_net(new_net,new_pin);
 
@@ -610,13 +611,13 @@ void create_hard_block_nodes(hard_block_models *models, FILE *file, Hashtable *o
 	}
 
   	// Create a fake ast node.
-	new_node->related_ast_node = (ast_node_t *)vtr::calloc(1, sizeof(ast_node_t));
-	new_node->related_ast_node->children = (ast_node_t **)vtr::calloc(1,sizeof(ast_node_t *));
-	new_node->related_ast_node->children[0] = (ast_node_t *)vtr::calloc(1, sizeof(ast_node_t));
-	new_node->related_ast_node->children[0]->types.identifier = vtr::strdup(subcircuit_name);
+	new_node->related_ast_node = (ast_node_t *)odin_calloc(1, sizeof(ast_node_t));
+	new_node->related_ast_node->children = (ast_node_t **)odin_calloc(1,sizeof(ast_node_t *));
+	new_node->related_ast_node->children[0] = (ast_node_t *)odin_calloc(1, sizeof(ast_node_t));
+	new_node->related_ast_node->children[0]->types.identifier = odin_strdup(subcircuit_name);
 
   	/*add this node to blif_netlist as an internal node */
-  	blif_netlist->internal_nodes = (nnode_t **)vtr::realloc(blif_netlist->internal_nodes, sizeof(nnode_t*) * (blif_netlist->num_internal_nodes + 1));
+  	blif_netlist->internal_nodes = (nnode_t **)odin_realloc(blif_netlist->internal_nodes, sizeof(nnode_t*) * (blif_netlist->num_internal_nodes + 1));
   	blif_netlist->internal_nodes[blif_netlist->num_internal_nodes++] = new_node;
 	new_node->file_number = current_parse_file;
 	new_node->line_number = line_count;
@@ -624,8 +625,8 @@ void create_hard_block_nodes(hard_block_models *models, FILE *file, Hashtable *o
   	free_hard_block_ports(ports);
   	mapping_index->destroy_free_items();
 	delete mapping_index;
-  	vtr::free(mappings);
-  	vtr::free(names);
+  	odin_free(mappings);
+  	odin_free(names);
 
 
 }
@@ -644,8 +645,8 @@ void create_internal_node_and_driver(FILE *file, Hashtable *output_nets_hash)
 	char buffer[READ_BLIF_BUFFER];
 	while ((ptr = vtr::strtok (NULL, TOKENS, file, buffer)))
 	{
-		names = (char**)vtr::realloc(names, sizeof(char*) * (input_count + 1));
-		names[input_count++]= vtr::strdup(ptr);
+		names = (char**)odin_realloc(names, sizeof(char*) * (input_count + 1));
+		names[input_count++]= odin_strdup(ptr);
 	}
 
 	/* assigning the new_node */
@@ -714,7 +715,7 @@ void create_internal_node_and_driver(FILE *file, Hashtable *output_nets_hash)
 			add_input_port_information(new_node, 1);
 
 			npin_t *new_pin = allocate_npin();
-			new_pin->name = vtr::strdup(GND_NAME);
+			new_pin->name = odin_strdup(GND_NAME);
 			new_pin->type = INPUT;
 			add_input_pin_to_node(new_node, new_pin,0);
 		}
@@ -725,7 +726,7 @@ void create_internal_node_and_driver(FILE *file, Hashtable *output_nets_hash)
 			add_input_port_information(new_node, 1);
 
 			npin_t *new_pin = allocate_npin();
-			new_pin->name = vtr::strdup(VCC_NAME);
+			new_pin->name = odin_strdup(VCC_NAME);
 			new_pin->type = INPUT;
 			add_input_pin_to_node(new_node, new_pin,0);
 		}
@@ -738,7 +739,7 @@ void create_internal_node_and_driver(FILE *file, Hashtable *output_nets_hash)
 		new_node->name = make_full_ref_name(names[input_count-1],NULL, NULL, NULL,-1);
 
 		/*add this node to blif_netlist as an internal node */
-		blif_netlist->internal_nodes = (nnode_t**)vtr::realloc(blif_netlist->internal_nodes, sizeof(nnode_t*)*(blif_netlist->num_internal_nodes+1));
+		blif_netlist->internal_nodes = (nnode_t**)odin_realloc(blif_netlist->internal_nodes, sizeof(nnode_t*)*(blif_netlist->num_internal_nodes+1));
 		blif_netlist->internal_nodes[blif_netlist->num_internal_nodes++] = new_node;
 		new_node->file_number = current_parse_file;
 		new_node->line_number = line_count;
@@ -759,7 +760,7 @@ void create_internal_node_and_driver(FILE *file, Hashtable *output_nets_hash)
 		output_nets_hash->add(new_node->name, new_net);
 
 		/* Free the char** names */
-		vtr::free(names);
+		odin_free(names);
 	}
 }
 
@@ -779,16 +780,17 @@ operation_list read_bit_map_find_unknown_gate(int input_count, nnode_t *node, FI
 	if(!input_count)
 	{
 		char buffer[READ_BLIF_BUFFER];
-		vtr::fgets (buffer, READ_BLIF_BUFFER, file);
+		if(read_line_and_trim(buffer, READ_BLIF_BUFFER, file))
+		{
+			file_line_number = last_line;
+			fsetpos(file,&pos);
 
-		file_line_number = last_line;
-		fsetpos(file,&pos);
-
-		char *ptr = vtr::strtok(buffer,"\t\n", file, buffer);
-		if      (!strcmp(ptr," 0")) return GND_NODE;
-		else if (!strcmp(ptr," 1")) return VCC_NODE;
-		else if (!ptr)              return GND_NODE;
-		else                        return VCC_NODE;
+			char *ptr = vtr::strtok(buffer," ", file, buffer);
+			if      (!strcmp(ptr,"0"))	return GND_NODE;
+			else if (!strcmp(ptr,"1"))	return VCC_NODE;
+			else if (!ptr)              return GND_NODE;
+			else                        return VCC_NODE;
+		}
 	}
 
 	char **bit_map = NULL;
@@ -797,26 +799,28 @@ operation_list read_bit_map_find_unknown_gate(int input_count, nnode_t *node, FI
 	char buffer[READ_BLIF_BUFFER];
 	while(1)
 	{
-		vtr::fgets (buffer, READ_BLIF_BUFFER, file);
+		if(!read_line_and_trim(buffer, READ_BLIF_BUFFER, file))
+			break;
+
 		if(!(buffer[0] == '0' || buffer[0] == '1' || buffer[0] == '-'))
 			break;
 
-		bit_map = (char**)vtr::realloc(bit_map,sizeof(char*) * (line_count_bitmap + 1));
-		bit_map[line_count_bitmap++] = vtr::strdup(vtr::strtok(buffer,TOKENS, file, buffer));
-		if (output_bit_map != NULL) vtr::free(output_bit_map);
-		output_bit_map = vtr::strdup(vtr::strtok(NULL,TOKENS, file, buffer));
+		bit_map = (char**)odin_realloc(bit_map,sizeof(char*) * (line_count_bitmap + 1));
+		bit_map[line_count_bitmap++] = odin_strdup(vtr::strtok(buffer,TOKENS, file, buffer));
+		odin_free(output_bit_map);
+		output_bit_map = odin_strdup(vtr::strtok(NULL,TOKENS, file, buffer));
 	}
 
 	if (!strcmp(output_bit_map, One))
 	{
-		vtr::free(output_bit_map);
-		output_bit_map = vtr::strdup(One);
+		odin_free(output_bit_map);
+		output_bit_map = odin_strdup(One);
 		node->generic_output = 1;
 	}
 	else
 	{
-		vtr::free(output_bit_map);
-		output_bit_map = vtr::strdup(Zero);
+		odin_free(output_bit_map);
+		output_bit_map = odin_strdup(Zero);
 		node->generic_output = 0;
 	}
 
@@ -1031,18 +1035,18 @@ static void build_top_input_node(const char *name_str, Hashtable *output_nets_ha
 
 	/* Create the pin connection for the net */
 	npin_t *new_pin = allocate_npin();
-	new_pin->name = vtr::strdup(temp_string);
+	new_pin->name = odin_strdup(temp_string);
 	new_pin->type = OUTPUT;
 
 	/* hookup the pin, net, and node */
 	add_output_pin_to_node(new_node, new_pin, 0);
 
 	nnet_t *new_net = allocate_nnet();
-	new_net->name = vtr::strdup(temp_string);
+	new_net->name = odin_strdup(temp_string);
 
 	add_driver_pin_to_net(new_net, new_pin);
 
-	blif_netlist->top_input_nodes = (nnode_t**)vtr::realloc(blif_netlist->top_input_nodes, sizeof(nnode_t*)*(blif_netlist->num_top_input_nodes+1));
+	blif_netlist->top_input_nodes = (nnode_t**)odin_realloc(blif_netlist->top_input_nodes, sizeof(nnode_t*)*(blif_netlist->num_top_input_nodes+1));
 	blif_netlist->top_input_nodes[blif_netlist->num_top_input_nodes++] = new_node;
 
 	//long sc_spot = sc_add_string(output_nets_sc, temp_string);
@@ -1111,7 +1115,7 @@ void rb_create_top_output_nodes(FILE *file)
 
 		/*adding the node to the blif_netlist output nodes
 		add_node_to_netlist() function can also be used */
-		blif_netlist->top_output_nodes = (nnode_t**)vtr::realloc(blif_netlist->top_output_nodes, sizeof(nnode_t*)*(blif_netlist->num_top_output_nodes+1));
+		blif_netlist->top_output_nodes = (nnode_t**)odin_realloc(blif_netlist->top_output_nodes, sizeof(nnode_t*)*(blif_netlist->num_top_output_nodes+1));
 		blif_netlist->top_output_nodes[blif_netlist->num_top_output_nodes++] = new_node;
 		new_node->file_number = current_parse_file;
 		new_node->line_number = line_count;
@@ -1193,9 +1197,9 @@ void rb_create_top_driver_nets(const char *instance_name_prefix, Hashtable *outp
 	blif_netlist->pad_net->name = make_full_ref_name(instance_name_prefix, NULL, NULL, pad_string, -1);
 	output_nets_hash->add(HBPAD_NAME, blif_netlist->pad_net);
 
-	blif_netlist->vcc_node->name = vtr::strdup(VCC_NAME);
-	blif_netlist->gnd_node->name = vtr::strdup(GND_NAME);
-	blif_netlist->pad_node->name = vtr::strdup(HBPAD_NAME);
+	blif_netlist->vcc_node->name = odin_strdup(VCC_NAME);
+	blif_netlist->gnd_node->name = odin_strdup(GND_NAME);
+	blif_netlist->pad_node->name = odin_strdup(HBPAD_NAME);
 
 }
 
@@ -1272,24 +1276,24 @@ hard_block_model *read_hard_block_model(char *name_subckt, hard_block_ports *por
 
 		// Search the file for .model followed buy the subcircuit name.
 		char buffer[READ_BLIF_BUFFER];
-		while (vtr::fgets(buffer, READ_BLIF_BUFFER, file))
+		while (read_line_and_trim(buffer, READ_BLIF_BUFFER, file))
 		{
 			char *token = vtr::strtok(buffer,TOKENS, file, buffer);
 			// match .model followed buy the subcircuit name.
 			if (token && !strcmp(token,".model") && !strcmp(vtr::strtok(NULL,TOKENS, file, buffer), name_subckt))
 			{
-				model = (hard_block_model *)vtr::malloc(sizeof(hard_block_model));
-				model->name = vtr::strdup(name_subckt);
-				model->inputs = (hard_block_pins *)vtr::malloc(sizeof(hard_block_pins));
+				model = (hard_block_model *)odin_alloc(sizeof(hard_block_model));
+				model->name = odin_strdup(name_subckt);
+				model->inputs = (hard_block_pins *)odin_alloc(sizeof(hard_block_pins));
 				model->inputs->count = 0;
 				model->inputs->names = NULL;
 
-				model->outputs = (hard_block_pins *)vtr::malloc(sizeof(hard_block_pins));
+				model->outputs = (hard_block_pins *)odin_alloc(sizeof(hard_block_pins));
 				model->outputs->count = 0;
 				model->outputs->names = NULL;
 
 				// Read the inputs and outputs.
-				while (vtr::fgets(buffer, READ_BLIF_BUFFER, file))
+				while (read_line_and_trim(buffer, READ_BLIF_BUFFER, file))
 				{
 					char *first_word = vtr::strtok(buffer, TOKENS, file, buffer);
 					if(!strcmp(first_word, ".inputs"))
@@ -1297,8 +1301,8 @@ hard_block_model *read_hard_block_model(char *name_subckt, hard_block_ports *por
 						char *name;
 						while ((name = vtr::strtok(NULL, TOKENS, file, buffer)))
 						{
-							model->inputs->names = (char **)vtr::realloc(model->inputs->names, sizeof(char *) * (model->inputs->count + 1));
-							model->inputs->names[model->inputs->count++] = vtr::strdup(name);
+							model->inputs->names = (char **)odin_realloc(model->inputs->names, sizeof(char *) * (model->inputs->count + 1));
+							model->inputs->names[model->inputs->count++] = odin_strdup(name);
 						}
 					}
 					else if(!strcmp(first_word, ".outputs"))
@@ -1306,8 +1310,8 @@ hard_block_model *read_hard_block_model(char *name_subckt, hard_block_ports *por
 						char *name;
 						while ((name = vtr::strtok(NULL, TOKENS, file, buffer)))
 						{
-							model->outputs->names = (char **)vtr::realloc(model->outputs->names, sizeof(char *) * (model->outputs->count + 1));
-							model->outputs->names[model->outputs->count++] = vtr::strdup(name);
+							model->outputs->names = (char **)odin_realloc(model->outputs->names, sizeof(char *) * (model->outputs->count + 1));
+							model->outputs->names[model->outputs->count++] = odin_strdup(name);
 						}
 					}
 					else if(!strcmp(first_word, ".end"))
@@ -1366,8 +1370,8 @@ static int compare_hard_block_pin_names(const void *p1, const void *p2)
 	char *port_name1 = get_hard_block_port_name(name1);
 	char *port_name2 = get_hard_block_port_name(name2);
 	int portname_difference = strcmp(port_name1, port_name2);
-	vtr::free(port_name1);
-	vtr::free(port_name2);
+	odin_free(port_name1);
+	odin_free(port_name2);
 
 	// If the portnames are the same, compare the pin numbers.
 	if (!portname_difference)
@@ -1391,7 +1395,7 @@ Hashtable *index_names(char **names, int count)
 	Hashtable *index = new Hashtable();
 	for (long i = 0; i < count; i++)
 	{
-		int *offset = (int *)vtr::malloc(sizeof(int));
+		int *offset = (int *)odin_alloc(sizeof(int));
 		*offset = i;
 		index->add(names[i], offset);
 	}
@@ -1419,7 +1423,7 @@ Hashtable *associate_names(char **names1, char **names2, int count)
 hard_block_ports *get_hard_block_ports(char **pins, int count)
 {
 	// Count the input port sizes.
-	hard_block_ports *ports = (hard_block_ports *)vtr::malloc(sizeof(hard_block_ports));
+	hard_block_ports *ports = (hard_block_ports *)odin_alloc(sizeof(hard_block_ports));
 	ports->count = 0;
 	ports->sizes = 0;
 	ports->names = 0;
@@ -1431,8 +1435,8 @@ hard_block_ports *get_hard_block_ports(char **pins, int count)
 		// Compare the part of the name before the "["
 		if (!i || strcmp(prev_portname, portname))
 		{
-			ports->sizes = (int *)vtr::realloc(ports->sizes, sizeof(int) * (ports->count + 1));
-			ports->names = (char **)vtr::realloc(ports->names, sizeof(char *) * (ports->count + 1));
+			ports->sizes = (int *)odin_realloc(ports->sizes, sizeof(int) * (ports->count + 1));
+			ports->names = (char **)odin_realloc(ports->names, sizeof(char *) * (ports->count + 1));
 
 			ports->sizes[ports->count] = 0;
 			ports->names[ports->count] = portname;
@@ -1522,7 +1526,7 @@ char *generate_hard_block_ports_signature(hard_block_ports *ports)
 		odin_sprintf(buffer1, "%s_%ld_", ports->names[j], ports->sizes[j]);
 		strcat(buffer, buffer1);
 	}
-	return vtr::strdup(buffer);
+	return odin_strdup(buffer);
 }
 
 /*
@@ -1535,7 +1539,7 @@ char *generate_hard_block_ports_signature(hard_block_ports *ports)
  */
 char *get_hard_block_port_name(char *name)
 {
-	name = vtr::strdup(name);
+	name = odin_strdup(name);
 	if (strchr(name,'['))
 		return strtok(name,"[");
 	else
@@ -1555,7 +1559,7 @@ long get_hard_block_pin_number(char *original_name)
 	if (!strchr(original_name,'['))
 		return -1;
 
-	char *name = vtr::strdup(original_name);
+	char *name = odin_strdup(original_name);
 	strtok(name,"[");
 	char *endptr;
 	char *pin_number_string = strtok(NULL,"]");
@@ -1564,7 +1568,7 @@ long get_hard_block_pin_number(char *original_name)
 	if (pin_number_string == endptr)
 		error_message(NETLIST_ERROR,file_line_number, current_parse_file,"The given port name \"%s\" does not contain a valid pin number.", original_name);
 
-	vtr::free(name);
+	odin_free(name);
 
 	return pin_number;
 }
@@ -1578,7 +1582,7 @@ void add_hard_block_model(hard_block_model *m, hard_block_ports *ports, hard_blo
 	needle[0] = '\0';
 	strcat(needle, m->name);
 	strcat(needle, ports->signature);
-	models->models = (hard_block_model **)vtr::realloc(models->models, (models->count * sizeof(hard_block_model *)) + 1);
+	models->models = (hard_block_model **)odin_realloc(models->models, (models->count * sizeof(hard_block_model *)) + 1);
 	models->models[models->count++] = m;
 	models->index->add(needle, m);
 }
@@ -1601,7 +1605,7 @@ hard_block_model *get_hard_block_model(char *name, hard_block_ports *ports, hard
  */
 hard_block_models *create_hard_block_models()
 {
-	hard_block_models *m = (hard_block_models *)vtr::malloc(sizeof(hard_block_models));
+	hard_block_models *m = (hard_block_models *)odin_alloc(sizeof(hard_block_models));
 	m->models = 0;
 	m->count  = 0;
 	m->index  = new Hashtable();
@@ -1617,7 +1621,7 @@ int count_blif_lines(FILE *file)
 {
 	int num_lines = 0;
 	char buffer[READ_BLIF_BUFFER];
-	while (vtr::fgets(buffer, READ_BLIF_BUFFER, file))
+	while (read_line_and_trim(buffer, READ_BLIF_BUFFER, file))
 	{
 		if (strstr(buffer, ".end"))
 			break;
@@ -1639,8 +1643,8 @@ void free_hard_block_models(hard_block_models *models)
 	for (i = 0; i < models->count; i++)
 		free_hard_block_model(models->models[i]);
 
-	vtr::free(models->models);
-	vtr::free(models);
+	odin_free(models->models);
+	odin_free(models);
 }
 
 
@@ -1655,7 +1659,7 @@ void free_hard_block_model(hard_block_model *model)
 	free_hard_block_ports(model->input_ports);
 	free_hard_block_ports(model->output_ports);
 
-	vtr::free(model);
+	odin_free(model);
 }
 
 /*
@@ -1664,13 +1668,13 @@ void free_hard_block_model(hard_block_model *model)
 void free_hard_block_pins(hard_block_pins *p)
 {
 	while (p->count--)
-		vtr::free(p->names[p->count]);
+		odin_free(p->names[p->count]);
 
-	vtr::free(p->names);
+	odin_free(p->names);
 
 	p->index->destroy_free_items();
 	delete p->index;
-	vtr::free(p);
+	odin_free(p);
 }
 
 /*
@@ -1679,13 +1683,13 @@ void free_hard_block_pins(hard_block_pins *p)
 void free_hard_block_ports(hard_block_ports *p)
 {
 	while(p->count--)
-		vtr::free(p->names[p->count]);
+		odin_free(p->names[p->count]);
 
-	vtr::free(p->signature);
-	vtr::free(p->names);
-	vtr::free(p->sizes);
+	odin_free(p->signature);
+	odin_free(p->names);
+	odin_free(p->sizes);
 
 	p->index->destroy_free_items();
 	delete p->index;
-	vtr::free(p);
+	odin_free(p);
 }

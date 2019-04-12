@@ -105,7 +105,7 @@ void declare_hard_adder_for_sub(nnode_t *node)
 	}
 
 	/* Does not exist - must create an instance*/
-	tmp = (t_adder *)vtr::malloc(sizeof(t_adder));
+	tmp = (t_adder *)odin_alloc(sizeof(t_adder));
 	tmp->next = (t_adder *)hard_adders->instances;
 	hard_adders->instances = tmp;
 	tmp->size_a = width_a;
@@ -129,7 +129,7 @@ void instantiate_hard_adder_subtraction(nnode_t *node, short mark, netlist_t * /
 	/* Need to give node proper name */
 	len = strlen(node->name);
 	len = len + 20; /* 20 chars should hold mul specs */
-	new_name = (char*)vtr::malloc(len);
+	new_name = (char*)odin_alloc(len);
 
 	/* wide input first :) identical branching! ? */
 	//if (node->input_port_sizes[0] > node->input_port_sizes[1])
@@ -146,7 +146,7 @@ void instantiate_hard_adder_subtraction(nnode_t *node, short mark, netlist_t * /
 		if (node->output_pins[i]->name ==NULL)
 		{
 			len = strlen(node->name) + 20; /* 6 chars for pin idx */
-			new_name = (char*)vtr::malloc(len);
+			new_name = (char*)odin_alloc(len);
 			odin_sprintf(new_name, "%s[%ld]", node->name, node->output_pins[i]->pin_node_idx);
 			node->output_pins[i]->name = new_name;
 		}
@@ -210,12 +210,12 @@ void init_split_adder_for_sub(nnode_t *node, nnode_t *ptr, int a, int sizea, int
 
 	/* Set new port sizes and parameters */
 	ptr->num_input_port_sizes = 3;
-	ptr->input_port_sizes = (int *)vtr::malloc(3 * sizeof(int));
+	ptr->input_port_sizes = (int *)odin_alloc(3 * sizeof(int));
 	ptr->input_port_sizes[0] = current_sizea;
 	ptr->input_port_sizes[1] = current_sizeb;
 	ptr->input_port_sizes[2] = cin;
 	ptr->num_output_port_sizes = 2;
-	ptr->output_port_sizes = (int *)vtr::malloc(2 * sizeof(int));
+	ptr->output_port_sizes = (int *)odin_alloc(2 * sizeof(int));
 	ptr->output_port_sizes[0] = cout;
 
 	/* The size of output port sumout equals the maxim size of a and b  */
@@ -226,7 +226,7 @@ void init_split_adder_for_sub(nnode_t *node, nnode_t *ptr, int a, int sizea, int
 
 	/* Set the number of pins and re-locate previous pin entries */
 	ptr->num_input_pins = current_sizea + current_sizeb + cin;
-	ptr->input_pins = (npin_t**)vtr::malloc(sizeof(void *) * (current_sizea + current_sizeb + cin));
+	ptr->input_pins = (npin_t**)odin_alloc(sizeof(void *) * (current_sizea + current_sizeb + cin));
 	//the normal sub: if flaga or flagb = 1, the input pins should be empty.
 	//the unary sub: all input pins for a should be null, input pins for b should be connected to node
 	if(node->num_input_port_sizes == 1)
@@ -336,7 +336,7 @@ void init_split_adder_for_sub(nnode_t *node, nnode_t *ptr, int a, int sizea, int
 		output = current_sizeb + cout;
 
 	ptr->num_output_pins = output;
-	ptr->output_pins = (npin_t**)vtr::malloc(sizeof(void *) * output);
+	ptr->output_pins = (npin_t**)odin_alloc(sizeof(void *) * output);
 	for (i = 0; i < output; i++)
 		ptr->output_pins[i] = NULL;
 
@@ -379,8 +379,8 @@ void split_adder_for_sub(nnode_t *nodeo, int a, int b, int sizea, int sizeb, int
 		oassert(nodeo->input_port_sizes[0] == b);
 	}
 
-	node  = (nnode_t**)vtr::malloc(sizeof(nnode_t*)*(count));
-	not_node = (nnode_t**)vtr::malloc(sizeof(nnode_t*)*(b));
+	node  = (nnode_t**)odin_alloc(sizeof(nnode_t*)*(count));
+	not_node = (nnode_t**)odin_alloc(sizeof(nnode_t*)*(b));
 
 	for(i = 0; i < b; i++)
 	{
@@ -394,7 +394,7 @@ void split_adder_for_sub(nnode_t *nodeo, int a, int b, int sizea, int sizeb, int
 	for(i = 0; i < count; i++)
 	{
 		node[i] = allocate_nnode();
-		node[i]->name = (char *)vtr::malloc(strlen(nodeo->name) + 20);
+		node[i]->name = (char *)odin_alloc(strlen(nodeo->name) + 20);
 		odin_sprintf(node[i]->name, "%s-%ld", nodeo->name, i);
 		if(i == count - 1)
 		{
@@ -635,16 +635,16 @@ void split_adder_for_sub(nnode_t *nodeo, int a, int b, int sizea, int sizeb, int
 
 
 	/* Probably more to do here in freeing the old node! */
-	vtr::free(nodeo->name);
-	vtr::free(nodeo->input_port_sizes);
-	vtr::free(nodeo->output_port_sizes);
+	odin_free(nodeo->name);
+	odin_free(nodeo->input_port_sizes);
+	odin_free(nodeo->output_port_sizes);
 
 	/* Free arrays NOT the pins since relocated! */
-	vtr::free(nodeo->input_pins);
-	vtr::free(nodeo->output_pins);
-	vtr::free(nodeo);
-	vtr::free(node);
-	vtr::free(not_node);
+	odin_free(nodeo->input_pins);
+	odin_free(nodeo->output_pins);
+	odin_free(nodeo);
+	odin_free(node);
+	odin_free(not_node);
 	return;
 }
 

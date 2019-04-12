@@ -58,7 +58,6 @@ char* standardize_number(const char* input);
 <INITIAL>"begin"			{ MP; return vBEGIN;}
 <INITIAL>"case"				{ MP; return vCASE;}
 <INITIAL>"default"			{ MP; return vDEFAULT;}
-<INITIAL>"`define"[^\n]*	{ MP; continue; }
 <INITIAL>"defparam"			{ MP; return vDEFPARAM;}
 <INITIAL>"else"				{ MP; return vELSE;}
 <INITIAL>"end"				{ MP; return vEND;}
@@ -182,10 +181,8 @@ char* standardize_number(const char* input);
 	/*	unsupported Operators	*/
 <INITIAL>"&&&"				{ UNSUPPORTED_TOKEN; return vNOT_SUPPORT;}
 
-
-
 	/*	operands	*/
-<INITIAL>`?[a-zA-Z_][a-zA-Z0-9_]*				{ MP; yylval.id_name = vtr::strdup(yytext); return vSYMBOL_ID; }
+<INITIAL>[a-zA-Z_][a-zA-Z0-9_]*				{ MP; yylval.id_name = odin_strdup(yytext); return vSYMBOL_ID; }
 
 	/*	signed numbers	*/
 <INITIAL>[0-9]+'[sS][bB][0-1_]*						{ MP; yylval.num_value = standardize_number(yytext); return vSIGNED_BINARY; }
@@ -210,7 +207,7 @@ char* standardize_number(const char* input);
 <INITIAL>'[dD][0-9_]*							{ MP; yylval.num_value = standardize_number(yytext); return vUNSIGNED_DECIMAL; }
 
 
-<INITIAL>#[0-9]+								{ MP; yylval.num_value = vtr::strdup(yytext+1); return vDELAY_ID; }
+<INITIAL>#[0-9]+								{ MP; yylval.num_value = odin_strdup(&yytext[1]); return vDELAY_ID; }
 
 	/* return operators */
 <INITIAL>[}{;:\[\],()#=.@&!?<>%|^~+*/-]			{ MP; return yytext[0]; }
@@ -235,5 +232,5 @@ char* standardize_number(const char* input)
 {
 	std::string input_number(input);
 	input_number.erase(std::remove(input_number.begin(), input_number.end(), '_'), input_number.end());
-	return vtr::strdup(input_number.c_str());
+	return odin_strdup(input_number.c_str());
 }

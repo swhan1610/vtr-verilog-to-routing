@@ -2,8 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "vtr_util.h"
-#include "vtr_memory.h"
+#include "odin_memory.h"
 #include "string_cache.h"
 
 unsigned long
@@ -33,9 +32,9 @@ generate_sc_hash(STRING_CACHE * sc)
     long hash;
 
     if(sc->string_hash != NULL)
-		vtr::free(sc->string_hash);
+		odin_free(sc->string_hash);
     if(sc->next_string != NULL)
-		vtr::free(sc->next_string);
+		odin_free(sc->next_string);
     sc->string_hash_size = sc->size * 2 + 11;
     sc->string_hash = (long *)sc_do_alloc(sc->string_hash_size, sizeof(long));
     sc->next_string = (long *)sc_do_alloc(sc->size, sizeof(long));
@@ -109,20 +108,20 @@ sc_add_string(STRING_CACHE * sc,
 	    a = sc_do_alloc(sc->size, sizeof(char *));
 	    if(sc->free > 0)
 		memcpy(a, sc->string, sc->free * sizeof(char *));
-	    vtr::free(sc->string);
+	    odin_free(sc->string);
 	    sc->string = (char **)a;
 
 	    a = sc_do_alloc(sc->size, sizeof(void *));
 	    if(sc->free > 0)
 		memcpy(a, sc->data, sc->free * sizeof(void *));
-	    vtr::free(sc->data);
+	    odin_free(sc->data);
 	    sc->data = (void **)a;
 
 	    generate_sc_hash(sc);
 	}
     i = sc->free;
     sc->free++;
-    sc->string[i] = vtr::strdup(string);
+    sc->string[i] = odin_strdup(string);
     sc->data[i] = NULL;
     hash = string_hash(sc, string) % sc->string_hash_size;
     sc->next_string[i] = sc->string_hash[hash];
@@ -151,13 +150,13 @@ sc_do_alloc(long a,
 	a = 1;
     if(b < 1)
 	b = 1;
-    r = vtr::calloc(a, b);
+    r = odin_calloc(a, b);
     while(r == NULL)
 	{
 	    fprintf(stderr,
 		    "Failed to allocated %ld chunks of %ld bytes (%ld bytes total)\n",
 		    a, b, a * b);
-	    r = vtr::calloc(a, b);
+	    r = odin_calloc(a, b);
 	}
     return r;
 }
@@ -169,25 +168,25 @@ STRING_CACHE * sc_free_string_cache(STRING_CACHE * sc)
     if(sc == NULL) return NULL;
     for(i = 0; i < sc->free; i++)
 	if (sc->string != NULL)
-	    vtr::free(sc->string[i]);
-    vtr::free(sc->string);
+	    odin_free(sc->string[i]);
+    odin_free(sc->string);
     sc->string = NULL;
     if(sc->data != NULL)
 	{
-//	    vtr::free(sc->data);
+//	    odin_free(sc->data);
 	    sc->data = NULL;
 	}
     if(sc->string_hash != NULL)
 	{
-	    vtr::free(sc->string_hash);
+	    odin_free(sc->string_hash);
 	    sc->string_hash = NULL;
 	}
     if(sc->next_string != NULL)
 	{
-	    vtr::free(sc->next_string);
+	    odin_free(sc->next_string);
 	    sc->next_string = NULL;
 	}
-    vtr::free(sc);
+    odin_free(sc);
     sc = NULL;
     return sc;
 }

@@ -1,6 +1,7 @@
 #ifndef ODIN_UTIL_H
 #define ODIN_UTIL_H
 #include "odin_types.h"
+#include "odin_memory.h"
 
 #define MAX_BUF 256
 
@@ -57,9 +58,12 @@ std::vector<std::string> parse_seperated_list(char *list, const char *separator)
 
 int print_progress_bar(double completion, int position, int length, double time);
 
-void trim_string(char* string, const char *chars);
+char* trim(char *input_string, int n);
+
 bool only_one_is_true(std::vector<bool> tested);
 int odin_sprintf (char *s, const char *format, ...);
+
+bool read_line_and_trim(char *buffer, long n_limit, FILE *file_ptr);
 
 void passed_verify_i_o_availabilty(struct nnode_t_t *node, int expected_input_size, int expected_output_size, const char *current_src, int line_src);
 

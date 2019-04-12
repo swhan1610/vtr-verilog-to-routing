@@ -10,12 +10,18 @@ void init_parser_for_file();
 void clean_up_parser_for_file();
 
 /* GENERAL PARSER NODES */
-ast_node_t *newSymbolNode(char *id, int line_number);
+ast_node_t *newSymbolNode(const char *id, int line_number);
 ast_node_t *newNumberNode(char *num, bases base, signedness sign, int line_number);
+ast_node_t *newNumberNode(long number, int line_number);
+
 ast_node_t *newList(ids type_id, ast_node_t *expression);
+ast_node_t *newEmptyList(ids node_type);
 ast_node_t *newList_entry(ast_node_t *concat_node, ast_node_t *expression);
 ast_node_t *newListReplicate(ast_node_t *exp, ast_node_t *child );
 ast_node_t *markAndProcessSymbolListWith(ids top_type, ids id, ast_node_t *symbol_list);
+
+ast_node_t *insertBufferredNetDeclare(ids net_direction, ids net_type, ast_node_t *complex_symbol_node);
+ast_node_t *processBufferredNetDeclare(ast_node_t *module_list);
 
 /* EXPRESSIONS */
 ast_node_t *newArrayRef(char *id, ast_node_t *expression, int line_number);
@@ -66,7 +72,7 @@ ast_node_t *newGate(operation_list gate_type, ast_node_t *gate_instance, int lin
 ast_node_t *newAssign(ast_node_t *statement, int line_number);
 ast_node_t *newVarDeclare(char* symbol, ast_node_t *expression1, ast_node_t *expression2, ast_node_t *expression3, ast_node_t *expression4, ast_node_t *value, int line_number);
 ast_node_t *newVarDeclare2D(char* symbol, ast_node_t *expression1, ast_node_t *expression2, ast_node_t *expression3, ast_node_t *expression4, ast_node_t *expression5, ast_node_t *expression6,ast_node_t *value, int line_number);
-ast_node_t *newIntegerTypeVarDeclare(char* symbol, ast_node_t *expression1, ast_node_t *expression2, ast_node_t *expression3, ast_node_t *expression4, ast_node_t *value, int line_number);
+ast_node_t *newIntegerDeclare(char* symbol, ast_node_t * expression1, ast_node_t * expression2, ast_node_t *value, int line_number);
 
 /* HIGH LEVEL ITEMS */
 ast_node_t *newModule(char* module_name, ast_node_t *list_of_ports, ast_node_t *list_of_module_items, int line_number);

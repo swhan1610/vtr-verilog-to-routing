@@ -3,8 +3,7 @@
 void add_tag_data();
 
 ast_node_t* create_node_w_type(ids id, int line_number, int file_number);
-ast_node_t* create_tree_node_id(char* string, int line_number, int file_number);
-ast_node_t *create_tree_node_long_number(long number, int constant_bit_size, int line_number, int file_number);
+ast_node_t *create_tree_node_long_number(long number, int line_number, int file_number);
 ast_node_t *create_tree_node_number(std::string number, bases base, signedness sign, int line_number, int file_number);
 
 void initial_node(ast_node_t *node, ids id, int line_number, int file_number, int counter);

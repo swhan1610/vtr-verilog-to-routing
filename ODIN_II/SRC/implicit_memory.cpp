@@ -58,7 +58,7 @@ implicit_memory *lookup_implicit_memory(char *instance_name_prefix, char *identi
 
 	std::unordered_map<std::string,implicit_memory *>::const_iterator mem_out = implicit_memories.find(std::string(memory_string));
 
-	vtr::free(memory_string);
+	odin_free(memory_string);
 
 	if ( mem_out == implicit_memories.end() )
 		return NULL;
@@ -122,14 +122,14 @@ implicit_memory *create_implicit_memory_block(int data_width, long memory_depth,
 	node->name = hard_node_name(node, instance_name_prefix, implicit_string, name);
 
 	// Create a fake ast node.
-	node->related_ast_node = (ast_node_t *)vtr::calloc(1, sizeof(ast_node_t));
-	node->related_ast_node->children = (ast_node_t **)vtr::calloc(1,sizeof(ast_node_t *));
-	node->related_ast_node->children[0] = (ast_node_t *)vtr::calloc(1, sizeof(ast_node_t));
-	node->related_ast_node->children[0]->types.identifier = vtr::strdup(DUAL_PORT_RAM_string);
+	node->related_ast_node = (ast_node_t *)odin_calloc(1, sizeof(ast_node_t));
+	node->related_ast_node->children = (ast_node_t **)odin_calloc(1,sizeof(ast_node_t *));
+	node->related_ast_node->children[0] = (ast_node_t *)odin_calloc(1, sizeof(ast_node_t));
+	node->related_ast_node->children[0]->types.identifier = odin_strdup(DUAL_PORT_RAM_string);
 
 	char *full_name = make_full_ref_name(instance_name_prefix, NULL, NULL, name, -1);
 
-	implicit_memory *memory = (implicit_memory *)vtr::malloc(sizeof(implicit_memory));
+	implicit_memory *memory = (implicit_memory *)odin_alloc(sizeof(implicit_memory));
 	memory->node = node;
 	memory->addr_width = addr_width;
 	memory->memory_depth = memory_depth;
@@ -205,8 +205,8 @@ void free_implicit_memory_index_and_finalize_memories()
 		for (auto mem_it : implicit_memories) 
 		{
 			finalize_implicit_memory(mem_it.second);
-			vtr::free(mem_it.second->name);
-			vtr::free(mem_it.second);
+			odin_free(mem_it.second->name);
+			odin_free(mem_it.second);
 		}
 	}
 	implicit_memories.clear();
@@ -378,5 +378,5 @@ void collapse_implicit_memory_to_single_port_ram(implicit_memory *memory)
 	}
 
 	ast_node_t *ast_node = node->related_ast_node;
-	ast_node->children[0]->types.identifier = vtr::strdup(SINGLE_PORT_RAM_string);
+	ast_node->children[0]->types.identifier = odin_strdup(SINGLE_PORT_RAM_string);
 }

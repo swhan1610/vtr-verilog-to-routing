@@ -203,7 +203,7 @@ void create_param_table_for_module(ast_node_t* parent_parameter_list, ast_node_t
 						sc_spot = sc_add_string(local_param_table_sc, temp_string);
 						local_param_table_sc->data[sc_spot] = (void *)node;
 					}
-					vtr::free(temp_string);
+					odin_free(temp_string);
 				}
 			}
 
@@ -283,7 +283,7 @@ void create_param_table_for_module(ast_node_t* parent_parameter_list, ast_node_t
 										local_param_table_sc->data[sc_spot] = (void *)node;
 									}
 								}
-								vtr::free(temp_string);
+								odin_free(temp_string);
 							}
 						}
 					}
@@ -343,13 +343,13 @@ void create_netlist()
 			char *underscores = strstr(module_param_name, "___");
 			oassert(underscores);
 			int len = underscores - module_param_name;
-			char *module_name = (char *)vtr::malloc((len+1)*sizeof(char));
+			char *module_name = (char *)odin_alloc((len+1)*sizeof(char));
 			strncpy(module_name, module_param_name, len);
 			module_name[len] = '\0';
 			// verify that it does exist
 			long sc_spot2 = sc_lookup_string(module_names_to_idx, module_name);
 			oassert(sc_spot2 > -1);
-			vtr::free(module_name);
+			odin_free(module_name);
 			// create a new MODULE node with new IDENTIFIER, but keep same ports and module_items
 			ast_node_t *module = (ast_node_t *)module_names_to_idx->data[sc_spot2];
 			ast_node_t *symbol_node = newSymbolNode(module_param_name, module->line_number);
@@ -361,6 +361,7 @@ void create_netlist()
 			// and to the module_names_to_idx for parameterised name
 			module_names_to_idx->data[sc_spot] = new_node;
 			ast_modules[i] = new_node;
+			odin_free(module_param_name);
 		}
 		oassert(ast_modules[i]->type == MODULE);
 	}
@@ -570,7 +571,7 @@ void convert_ast_to_netlist_recursing_via_modules(ast_node_t* current_module, ch
 			convert_ast_to_netlist_recursing_via_modules(((ast_node_t*)module_names_to_idx->data[sc_spot]), temp_instance_name, level+1);
 
 			/* free the string */
-			vtr::free(temp_instance_name);
+			odin_free(temp_instance_name);
 		}
         for (k = 0; k < current_module->types.function.size_function_instantiations; k++)
 		{
@@ -604,7 +605,7 @@ void convert_ast_to_netlist_recursing_via_modules(ast_node_t* current_module, ch
 			convert_ast_to_netlist_recursing_via_modules(((ast_node_t*)module_names_to_idx->data[sc_spot]), temp_instance_name, level+1);
 
 			/* free the string */
-			vtr::free(temp_instance_name);
+			odin_free(temp_instance_name);
 		}
 
 		/* once we've done everyone lower, we can do this module */
@@ -639,8 +640,8 @@ signal_list_t *netlist_expand_ast_of_module(ast_node_t* node, char *instance_nam
 		 * For example, a module we know that the 0th entry is the identifier of the module */
 		if (node->num_children > 0)
 		{
-			child_skip_list = (short*)vtr::calloc(node->num_children, sizeof(short));
-			children_signal_list = (signal_list_t**)vtr::malloc(sizeof(signal_list_t*)*node->num_children);
+			child_skip_list = (short*)odin_calloc(node->num_children, sizeof(short));
+			children_signal_list = (signal_list_t**)odin_alloc(sizeof(signal_list_t*)*node->num_children);
 		}
 
 		/* ------------------------------------------------------------------------------*/
@@ -885,21 +886,18 @@ signal_list_t *netlist_expand_ast_of_module(ast_node_t* node, char *instance_nam
 
 				/* free the symbol table for this module since we're done processing */
 				sc_free_string_cache(local_symbol_table_sc);
-				vtr::free(local_symbol_table);
+				odin_free(local_symbol_table);
 
 				break;
 			}
 			case FUNCTION_ITEMS:
 			{
 
-				//local_symbol_table_sc = sc_free_string_cache(local_symbol_table_sc);
-				//vtr::free(local_symbol_table);
+
 				/* free the symbol table for this module since we're done processing */
 				function_local_symbol_table_sc = sc_free_string_cache(function_local_symbol_table_sc);
-				vtr::free(function_local_symbol_table);
+				odin_free(function_local_symbol_table);
 				function_local_symbol_table = NULL;
-				//function_local_symbol_table = NULL;
-
 			}
 			break;
 			case FUNCTION_INSTANCE:
@@ -979,11 +977,11 @@ signal_list_t *netlist_expand_ast_of_module(ast_node_t* node, char *instance_nam
 	/* cleaning */
 	if (child_skip_list != NULL)
 	{
-		vtr::free(child_skip_list);
+		odin_free(child_skip_list);
 	}
 	if (children_signal_list != NULL)
 	{
-		vtr::free(children_signal_list);
+		odin_free(children_signal_list);
 	}
 
 	return return_sig_list;
@@ -1162,7 +1160,7 @@ void create_top_driver_nets(ast_node_t* module, char *instance_name_prefix)
 
 	/* CREATE the driver for the ZERO */
 	verilog_netlist->gnd_node->name = make_full_ref_name(instance_name_prefix, NULL, NULL, zero_string, -1);
-	vtr::free(zero_string);
+	odin_free(zero_string);
 	zero_string = verilog_netlist->gnd_node->name;
 
 	sc_spot = sc_add_string(output_nets_sc, zero_string);
@@ -1176,7 +1174,7 @@ void create_top_driver_nets(ast_node_t* module, char *instance_name_prefix)
 
 	/* CREATE the driver for the ONE and store twice */
 	verilog_netlist->vcc_node->name = make_full_ref_name(instance_name_prefix, NULL, NULL, one_string, -1);
-	vtr::free(one_string);
+	odin_free(one_string);
 	one_string = verilog_netlist->vcc_node->name;
 
 	sc_spot = sc_add_string(output_nets_sc, one_string);
@@ -1190,7 +1188,7 @@ void create_top_driver_nets(ast_node_t* module, char *instance_name_prefix)
 
 	/* CREATE the driver for the PAD */
 	verilog_netlist->pad_node->name = make_full_ref_name(instance_name_prefix, NULL, NULL, pad_string, -1);
-	vtr::free(pad_string);
+	odin_free(pad_string);
 	pad_string = verilog_netlist->pad_node->name;
 
 	sc_spot = sc_add_string(output_nets_sc, pad_string);
@@ -1267,7 +1265,7 @@ void create_top_output_nodes(ast_node_t* module, char *instance_name_prefix)
 							add_input_pin_to_node(new_node, new_pin, 0);
 
 							/* record this node */
-							verilog_netlist->top_output_nodes = (nnode_t **)vtr::realloc(verilog_netlist->top_output_nodes, sizeof(nnode_t*)*(verilog_netlist->num_top_output_nodes+1));
+							verilog_netlist->top_output_nodes = (nnode_t **)odin_realloc(verilog_netlist->top_output_nodes, sizeof(nnode_t*)*(verilog_netlist->num_top_output_nodes+1));
 							verilog_netlist->top_output_nodes[verilog_netlist->num_top_output_nodes] = new_node;
 							verilog_netlist->num_top_output_nodes++;
 						}
@@ -1305,7 +1303,7 @@ void create_top_output_nodes(ast_node_t* module, char *instance_name_prefix)
 								add_input_pin_to_node(new_node, new_pin, 0);
 
 								/* record this node */
-								verilog_netlist->top_output_nodes = (nnode_t **)vtr::realloc(verilog_netlist->top_output_nodes, sizeof(nnode_t*)*(verilog_netlist->num_top_output_nodes+1));
+								verilog_netlist->top_output_nodes = (nnode_t **)odin_realloc(verilog_netlist->top_output_nodes, sizeof(nnode_t*)*(verilog_netlist->num_top_output_nodes+1));
 								verilog_netlist->top_output_nodes[verilog_netlist->num_top_output_nodes] = new_node;
 								verilog_netlist->num_top_output_nodes++;
 							}
@@ -1532,7 +1530,7 @@ nnet_t* define_nodes_and_nets_with_driver(ast_node_t* var_declare, char *instanc
 		/* create this node and make the pin connection to the net */
 		new_pin = allocate_npin();
 		new_node = allocate_nnode();
-		new_node->name = vtr::strdup(temp_string);
+		new_node->name = odin_strdup(temp_string);
 
 		new_node->related_ast_node = var_declare;
 		new_node->type = INPUT_NODE;
@@ -1545,7 +1543,7 @@ nnet_t* define_nodes_and_nets_with_driver(ast_node_t* var_declare, char *instanc
 		add_driver_pin_to_net(new_net, new_pin);
 
 		/* store it in the list of input nodes */
-		verilog_netlist->top_input_nodes = (nnode_t**)vtr::realloc(verilog_netlist->top_input_nodes, sizeof(nnode_t*)*(verilog_netlist->num_top_input_nodes+1));
+		verilog_netlist->top_input_nodes = (nnode_t**)odin_realloc(verilog_netlist->top_input_nodes, sizeof(nnode_t*)*(verilog_netlist->num_top_input_nodes+1));
 		verilog_netlist->top_input_nodes[verilog_netlist->num_top_input_nodes] = new_node;
 		verilog_netlist->num_top_input_nodes++;
 	}
@@ -1580,7 +1578,7 @@ nnet_t* define_nodes_and_nets_with_driver(ast_node_t* var_declare, char *instanc
 			new_node = allocate_nnode();
 
 			new_node->related_ast_node = var_declare;
-			new_node->name = vtr::strdup(temp_string);
+			new_node->name = odin_strdup(temp_string);
 			new_node->type = INPUT_NODE;
 			/* allocate the pins needed */
 			allocate_more_output_pins(new_node, 1);
@@ -1591,7 +1589,7 @@ nnet_t* define_nodes_and_nets_with_driver(ast_node_t* var_declare, char *instanc
 			add_driver_pin_to_net(new_net, new_pin);
 
 			/* store it in the list of input nodes */
-			verilog_netlist->top_input_nodes = (nnode_t**)vtr::realloc(verilog_netlist->top_input_nodes, sizeof(nnode_t*)*(verilog_netlist->num_top_input_nodes+1));
+			verilog_netlist->top_input_nodes = (nnode_t**)odin_realloc(verilog_netlist->top_input_nodes, sizeof(nnode_t*)*(verilog_netlist->num_top_input_nodes+1));
 			verilog_netlist->top_input_nodes[verilog_netlist->num_top_input_nodes] = new_node;
 			verilog_netlist->num_top_input_nodes++;
 		}
@@ -1699,7 +1697,7 @@ void create_symbol_table_for_module(ast_node_t* module_items, char * /*module_na
 						local_symbol_table_sc->data[sc_spot] = (void *)var_declare;
 
 						/* store the symbol */
-						local_symbol_table = (ast_node_t **)vtr::realloc(local_symbol_table, sizeof(ast_node_t*)*(num_local_symbol_table+1));
+						local_symbol_table = (ast_node_t **)odin_realloc(local_symbol_table, sizeof(ast_node_t*)*(num_local_symbol_table+1));
 						local_symbol_table[num_local_symbol_table] = (ast_node_t *)var_declare;
 						num_local_symbol_table ++;
 
@@ -1710,7 +1708,7 @@ void create_symbol_table_for_module(ast_node_t* module_items, char * /*module_na
 							var_declare->types.variable.initial_value = initial_value;
 						}
 					}
-					vtr::free(temp_string);
+					odin_free(temp_string);
 				}
 			}
 		if(module_items->children[i]->type == ASSIGN)
@@ -1730,7 +1728,7 @@ void create_symbol_table_for_module(ast_node_t* module_items, char * /*module_na
 							local_symbol_table_sc->data[sc_spot]= module_items->children[i]->children[0];
 
 							/* store the symbol */
-							local_symbol_table = (ast_node_t **)vtr::realloc(local_symbol_table, sizeof(ast_node_t*)*(num_local_symbol_table+1));
+							local_symbol_table = (ast_node_t **)odin_realloc(local_symbol_table, sizeof(ast_node_t*)*(num_local_symbol_table+1));
 							local_symbol_table[num_local_symbol_table] = (ast_node_t *)module_items->children[i]->children[0];
 							num_local_symbol_table ++;
 
@@ -1743,7 +1741,7 @@ void create_symbol_table_for_module(ast_node_t* module_items, char * /*module_na
 							((ast_node_t*)local_symbol_table_sc->data[sc_spot])->types.variable.is_input = FALSE;
 
 						}
-						vtr::free(temp_string);
+						odin_free(temp_string);
 					}
 				}
 			}
@@ -1850,7 +1848,7 @@ void create_symbol_table_for_function(ast_node_t* function_items, char * /*funct
 						function_local_symbol_table_sc->data[sc_spot] = (void *)var_declare;
 
 						/* store the symbol */
-						function_local_symbol_table = (ast_node_t **)vtr::realloc(function_local_symbol_table, sizeof(ast_node_t*)*(function_num_local_symbol_table+1));
+						function_local_symbol_table = (ast_node_t **)odin_realloc(function_local_symbol_table, sizeof(ast_node_t*)*(function_num_local_symbol_table+1));
 						function_local_symbol_table[function_num_local_symbol_table] = (ast_node_t *)var_declare;
 						function_num_local_symbol_table ++;
 
@@ -1861,7 +1859,7 @@ void create_symbol_table_for_function(ast_node_t* function_items, char * /*funct
 							var_declare->types.variable.initial_value = initial_value;
 						}
 					}
-					vtr::free(temp_string);
+					odin_free(temp_string);
 				}
 			}
 		}
@@ -1935,7 +1933,7 @@ void connect_memory_and_alias(ast_node_t* hb_instance, char *instance_name_prefi
 			{
 				name_of_hb_input = get_name_of_pin_at_bit(hb_instance_var_node, -1, instance_name_prefix);
 				full_name = make_full_ref_name(instance_name_prefix, NULL, NULL, name_of_hb_input, -1);
-				vtr::free(name_of_hb_input);
+				odin_free(name_of_hb_input);
 			}
 			
 			alias_name = make_full_ref_name(instance_name_prefix,
@@ -1945,7 +1943,7 @@ void connect_memory_and_alias(ast_node_t* hb_instance, char *instance_name_prefi
 
 			/* Lookup port size in cache */
 			port_size = get_memory_port_size(alias_name);
-			vtr::free(alias_name);
+			odin_free(alias_name);
 			oassert(port_size != 0);
 
 			for (j = 0; j < port_size; j++)
@@ -1959,7 +1957,7 @@ void connect_memory_and_alias(ast_node_t* hb_instance, char *instance_name_prefi
 				{
 					name_of_hb_input = get_name_of_pin_at_bit(hb_instance_var_node, j, instance_name_prefix);
 					full_name = make_full_ref_name(instance_name_prefix, NULL, NULL, name_of_hb_input, -1);
-					vtr::free(name_of_hb_input);
+					odin_free(name_of_hb_input);
 
 					alias_name = make_full_ref_name(instance_name_prefix,
 							hb_instance->children[0]->types.identifier,
@@ -1978,7 +1976,7 @@ void connect_memory_and_alias(ast_node_t* hb_instance, char *instance_name_prefi
 					{
 						name_of_hb_input = get_name_of_pin_at_bit(hb_instance_var_node, -1, instance_name_prefix);
 						full_name = make_full_ref_name(instance_name_prefix, NULL, NULL, name_of_hb_input, j);
-						vtr::free(name_of_hb_input);
+						odin_free(name_of_hb_input);
 					}
 
 					alias_name = make_full_ref_name(instance_name_prefix,
@@ -2033,8 +2031,8 @@ void connect_memory_and_alias(ast_node_t* hb_instance, char *instance_name_prefi
 					input_nets_sc->data[sc_spot_input_new] = (void *)in_net;
 				}
 
-				vtr::free(full_name);
-				vtr::free(alias_name);
+				odin_free(full_name);
+				odin_free(alias_name);
 			}
 		}
 	}
@@ -2110,7 +2108,7 @@ void connect_hard_block_and_alias(ast_node_t* hb_instance, char *instance_name_p
 				{
 					name_of_hb_input = get_name_of_pin_at_bit(hb_instance_var_node, j, instance_name_prefix);
 					full_name = make_full_ref_name(instance_name_prefix, NULL, NULL, name_of_hb_input, -1);
-					vtr::free(name_of_hb_input);
+					odin_free(name_of_hb_input);
 
 					alias_name = make_full_ref_name(instance_name_prefix,
 							hb_instance->children[0]->types.identifier,
@@ -2129,7 +2127,7 @@ void connect_hard_block_and_alias(ast_node_t* hb_instance, char *instance_name_p
 					{
 						name_of_hb_input = get_name_of_pin_at_bit(hb_instance_var_node, -1, instance_name_prefix);
 						full_name = make_full_ref_name(instance_name_prefix, NULL, NULL, name_of_hb_input, -1);
-						vtr::free(name_of_hb_input);
+						odin_free(name_of_hb_input);
 					}
 
 					alias_name = make_full_ref_name(instance_name_prefix,
@@ -2189,8 +2187,8 @@ void connect_hard_block_and_alias(ast_node_t* hb_instance, char *instance_name_p
 					}
 				}
 
-				vtr::free(full_name);
-				vtr::free(alias_name);
+				odin_free(full_name);
+				odin_free(alias_name);
 			}
 		}
 	}
@@ -2235,7 +2233,7 @@ void connect_module_instantiation_and_alias(short PASS, ast_node_t* module_insta
 	}
 
 	if (module_instance_name != module_instance->children[0]->types.identifier)
-		vtr::free(module_instance_name);
+		odin_free(module_instance_name);
 
 	module_node = (ast_node_t*)module_names_to_idx->data[sc_spot];
 	module_list = module_node->children[1]; // MODULE->VAR_DECLARE_LIST(child[1])
@@ -2280,7 +2278,7 @@ void connect_module_instantiation_and_alias(short PASS, ast_node_t* module_insta
 				NULL, -1);
 			ast_node_t *node1 = resolve_node(NULL, FALSE, module_name, module_var_node->children[1]);
 			ast_node_t *node2 = resolve_node(NULL, FALSE, module_name, module_var_node->children[2]);
-			vtr::free(module_name);
+			odin_free(module_name);
 			oassert(node2->type == NUMBERS && node1->type == NUMBERS);
 			/* assume all arrays declared [largest:smallest] */
 			oassert(node2->types.number.value <= node1->types.number.value);
@@ -2298,7 +2296,7 @@ void connect_module_instantiation_and_alias(short PASS, ast_node_t* module_insta
 			ast_node_t *node2 = resolve_node(NULL, FALSE, module_name, module_var_node->children[2]);
 			ast_node_t *node3 = resolve_node(NULL, FALSE, module_name, module_var_node->children[3]);
 			ast_node_t *node4 = resolve_node(NULL, FALSE, module_name, module_var_node->children[4]);
-			free(module_name);
+			odin_free(module_name);
 			oassert(node2->type == NUMBERS && node1->type == NUMBERS && node3->type == NUMBERS && node4->type == NUMBERS);
 			/* assume all arrays declared [largest:smallest] */
 			oassert(node2->types.number.value <= node1->types.number.value);
@@ -2331,7 +2329,7 @@ void connect_module_instantiation_and_alias(short PASS, ast_node_t* module_insta
 					/* Get the name of the module instantiation pin */
 					name_of_module_instance_of_input = get_name_of_pin_at_bit(module_instance_var_node, j, instance_name_prefix);
 					full_name = make_full_ref_name(instance_name_prefix, NULL, NULL, name_of_module_instance_of_input, -1);
-					vtr::free(name_of_module_instance_of_input);
+					odin_free(name_of_module_instance_of_input);
 
 					/* make the new string for the alias name - has to be a identifier in the instantiated modules old names */
 					name_of_module_instance_of_input = get_name_of_var_declare_at_bit(module_list->children[i]->children[0], j);
@@ -2340,7 +2338,7 @@ void connect_module_instantiation_and_alias(short PASS, ast_node_t* module_insta
 							module_instance->children[1]->children[0]->types.identifier,
 							name_of_module_instance_of_input, -1);
 
-					vtr::free(name_of_module_instance_of_input);
+					odin_free(name_of_module_instance_of_input);
 				}
 				else
 				{
@@ -2349,7 +2347,7 @@ void connect_module_instantiation_and_alias(short PASS, ast_node_t* module_insta
 					/* Get the name of the module instantiation pin */
 					name_of_module_instance_of_input = get_name_of_pin_at_bit(module_instance_var_node, -1, instance_name_prefix);
 					full_name = make_full_ref_name(instance_name_prefix, NULL, NULL, name_of_module_instance_of_input, -1);
-					vtr::free(name_of_module_instance_of_input);
+					odin_free(name_of_module_instance_of_input);
 
 					name_of_module_instance_of_input = get_name_of_var_declare_at_bit(module_list->children[i]->children[0], 0);
 					alias_name = make_full_ref_name(instance_name_prefix,
@@ -2357,7 +2355,7 @@ void connect_module_instantiation_and_alias(short PASS, ast_node_t* module_insta
 							module_instance->children[1]->children[0]->types.identifier,
 							name_of_module_instance_of_input, -1);
 
-					vtr::free(name_of_module_instance_of_input);
+					odin_free(name_of_module_instance_of_input);
 				}
 
 
@@ -2440,8 +2438,8 @@ void connect_module_instantiation_and_alias(short PASS, ast_node_t* module_insta
 					}
 				}
 
-				vtr::free(full_name);
-				vtr::free(alias_name);
+				odin_free(full_name);
+				odin_free(alias_name);
 			}
 			else if (module_list->children[i]->children[0]->types.variable.is_output)
 			{
@@ -2458,13 +2456,13 @@ void connect_module_instantiation_and_alias(short PASS, ast_node_t* module_insta
 					/* Get the name of the module instantiation pin */
 					name_of_module_instance_of_input = get_name_of_pin_at_bit(module_instance_var_node, j, instance_name_prefix);
 					full_name = make_full_ref_name(instance_name_prefix, NULL, NULL, name_of_module_instance_of_input, -1);
-					vtr::free(name_of_module_instance_of_input);
+					odin_free(name_of_module_instance_of_input);
 
 					name_of_module_instance_of_input = get_name_of_var_declare_at_bit(module_list->children[i]->children[0], j);
 					alias_name = make_full_ref_name(instance_name_prefix,
 							module_instance->children[0]->types.identifier,
 							module_instance->children[1]->children[0]->types.identifier, name_of_module_instance_of_input, -1);
-					vtr::free(name_of_module_instance_of_input);
+					odin_free(name_of_module_instance_of_input);
 				}
 				else
 				{
@@ -2472,13 +2470,13 @@ void connect_module_instantiation_and_alias(short PASS, ast_node_t* module_insta
 					/* Get the name of the module instantiation pin */
 					name_of_module_instance_of_input = get_name_of_pin_at_bit(module_instance_var_node, -1, instance_name_prefix);
 					full_name = make_full_ref_name(instance_name_prefix, NULL, NULL, name_of_module_instance_of_input, -1);
-					vtr::free(name_of_module_instance_of_input);
+					odin_free(name_of_module_instance_of_input);
 
 					name_of_module_instance_of_input = get_name_of_var_declare_at_bit(module_list->children[i]->children[0], 0);
 					alias_name = make_full_ref_name(instance_name_prefix,
 							module_instance->children[0]->types.identifier,
 							module_instance->children[1]->children[0]->types.identifier, name_of_module_instance_of_input, -1);
-					vtr::free(name_of_module_instance_of_input);
+					odin_free(name_of_module_instance_of_input);
 				}
 
 
@@ -2529,8 +2527,8 @@ void connect_module_instantiation_and_alias(short PASS, ast_node_t* module_insta
 					}
 				}
 
-				vtr::free(full_name);
-				vtr::free(alias_name);
+				odin_free(full_name);
+				odin_free(alias_name);
 			}
 		}
 	}
@@ -2561,7 +2559,7 @@ signal_list_t *connect_function_instantiation_and_alias(short PASS, ast_node_t* 
 	}
 
     if (module_instance_name != module_instance->children[0]->types.identifier)
-		vtr::free(module_instance_name);
+		odin_free(module_instance_name);
 
 	module_node = (ast_node_t*)module_names_to_idx->data[sc_spot];
 	module_list = module_node->children[1]; // MODULE->VAR_DECLARE_LIST(child[1])
@@ -2609,7 +2607,7 @@ signal_list_t *connect_function_instantiation_and_alias(short PASS, ast_node_t* 
 
 			ast_node_t *node1 = resolve_node(NULL, FALSE, module_name, module_var_node->children[1]);
 			ast_node_t *node2 = resolve_node(NULL, FALSE, module_name, module_var_node->children[2]);
-			vtr::free(module_name);
+			odin_free(module_name);
 			oassert(node2->type == NUMBERS && node1->type == NUMBERS);
 			/* assume all arrays declared [largest:smallest] */
 			oassert(node2->types.number.value <= node1->types.number.value);
@@ -2629,7 +2627,7 @@ signal_list_t *connect_function_instantiation_and_alias(short PASS, ast_node_t* 
 			ast_node_t *node2 = resolve_node(NULL, FALSE, module_name, module_var_node->children[2]);
 			ast_node_t *node3 = resolve_node(NULL, FALSE, module_name, module_var_node->children[3]);
 			ast_node_t *node4 = resolve_node(NULL, FALSE, module_name, module_var_node->children[4]);
-			free(module_name);
+			odin_free(module_name);
 			oassert(node2->type == NUMBERS && node1->type == NUMBERS && node3->type == NUMBERS && node4->type == NUMBERS);
 			/* assume all arrays declared [largest:smallest] */
 			oassert(node2->types.number.value <= node1->types.number.value);
@@ -2662,7 +2660,7 @@ signal_list_t *connect_function_instantiation_and_alias(short PASS, ast_node_t* 
 					/* Get the name of the module instantiation pin */
 					name_of_module_instance_of_input = get_name_of_pin_at_bit(module_instance_var_node, j, instance_name_prefix);
 					full_name = make_full_ref_name(instance_name_prefix, NULL, NULL, name_of_module_instance_of_input, -1);
-					vtr::free(name_of_module_instance_of_input);
+					odin_free(name_of_module_instance_of_input);
 
 					/* make the new string for the alias name - has to be a identifier in the instantiated modules old names */
 					name_of_module_instance_of_input = get_name_of_var_declare_at_bit(module_list->children[i]->children[0], j);
@@ -2671,7 +2669,7 @@ signal_list_t *connect_function_instantiation_and_alias(short PASS, ast_node_t* 
 							module_instance->children[1]->children[0]->types.identifier,
 							name_of_module_instance_of_input, -1);
 
-					vtr::free(name_of_module_instance_of_input);
+					odin_free(name_of_module_instance_of_input);
 				}
 				else
 				{
@@ -2682,7 +2680,7 @@ signal_list_t *connect_function_instantiation_and_alias(short PASS, ast_node_t* 
 
 
 					full_name = make_full_ref_name(instance_name_prefix, NULL, NULL, name_of_module_instance_of_input, -1);
-					vtr::free(name_of_module_instance_of_input);
+					odin_free(name_of_module_instance_of_input);
 
 					name_of_module_instance_of_input = get_name_of_var_declare_at_bit(module_list->children[i]->children[0], 0);
 					alias_name = make_full_ref_name(instance_name_prefix,
@@ -2690,7 +2688,7 @@ signal_list_t *connect_function_instantiation_and_alias(short PASS, ast_node_t* 
 							module_instance->children[1]->children[0]->types.identifier,
 							name_of_module_instance_of_input, -1);
 
-					vtr::free(name_of_module_instance_of_input);
+					odin_free(name_of_module_instance_of_input);
 				}
 
 				/* search for the old_input name */
@@ -2776,8 +2774,8 @@ signal_list_t *connect_function_instantiation_and_alias(short PASS, ast_node_t* 
 					}
 				}
 
-				vtr::free(full_name);
-				vtr::free(alias_name);
+				odin_free(full_name);
+				odin_free(alias_name);
 			}
 			else if (i == 0 && module_list->children[i]->children[0]->types.variable.is_output)
 			{
@@ -2793,12 +2791,8 @@ signal_list_t *connect_function_instantiation_and_alias(short PASS, ast_node_t* 
 				{
 					/* Get the name of the module instantiation pin */
 
-                	//name_of_module_instance_of_input = get_name_of_pin_at_bit(module_instance_var_node, j, instance_name_prefix);
 
 					full_name = make_full_ref_name(instance_name_prefix, NULL, NULL, NULL, -1);
-
-					//vtr::free(name_of_module_instance_of_input);
-
 
 					name_of_module_instance_of_input = get_name_of_var_declare_at_bit(module_list->children[i]->children[0], j);
 
@@ -2806,7 +2800,7 @@ signal_list_t *connect_function_instantiation_and_alias(short PASS, ast_node_t* 
 							module_instance->children[0]->types.identifier,
 							module_instance->children[1]->children[0]->types.identifier, name_of_module_instance_of_input, -1);
 
-					vtr::free(name_of_module_instance_of_input);
+					odin_free(name_of_module_instance_of_input);
 
 				}
 				else
@@ -2815,11 +2809,7 @@ signal_list_t *connect_function_instantiation_and_alias(short PASS, ast_node_t* 
 					//oassert(j == 0);
                   	/* Get the name of the module instantiation pin */
 
-					//name_of_module_instance_of_input = get_name_of_pin_at_bit(module_instance_var_node, -1, instance_name_prefix);
-
 					full_name = make_full_ref_name(instance_name_prefix, NULL, NULL, NULL, -1);
-
-					//vtr::free(name_of_module_instance_of_input);
 
 					name_of_module_instance_of_input = get_name_of_var_declare_at_bit(module_list->children[i]->children[0], 0);
 
@@ -2827,7 +2817,7 @@ signal_list_t *connect_function_instantiation_and_alias(short PASS, ast_node_t* 
 							module_instance->children[0]->types.identifier,
 							module_instance->children[1]->children[0]->types.identifier, name_of_module_instance_of_input, -1);
 
-					vtr::free(name_of_module_instance_of_input);
+					odin_free(name_of_module_instance_of_input);
 				}
 
 				/* check if the instantiation pin exists. */
@@ -2881,8 +2871,8 @@ signal_list_t *connect_function_instantiation_and_alias(short PASS, ast_node_t* 
 				}
 
 		        /* make the inplicit output list and hook up the outputs */
-				vtr::free(full_name);
-				vtr::free(alias_name);
+				odin_free(full_name);
+				odin_free(alias_name);
 			}
 		}
 	}
@@ -2920,8 +2910,8 @@ signal_list_t *create_pins(ast_node_t* var_declare, char *name, char *instance_n
 	else if (var_declare == NULL)
 	{
 		/* if you have the name and just want a pin then use this method */
-		pin_lists = (char_list_t*)vtr::malloc(sizeof(char_list_t)*1);
-		pin_lists->strings = (char**)vtr::malloc(sizeof(char*));
+		pin_lists = (char_list_t*)odin_alloc(sizeof(char_list_t)*1);
+		pin_lists->strings = (char**)odin_alloc(sizeof(char*));
 		pin_lists->strings[0] = name;
 		pin_lists->num_strings = 1;
 	}
@@ -2988,8 +2978,8 @@ signal_list_t *create_pins(ast_node_t* var_declare, char *name, char *instance_n
 	}
 
     if (pin_lists != NULL) {
-        vtr::free(pin_lists->strings);
-        vtr::free(pin_lists);
+        odin_free(pin_lists->strings);
+        odin_free(pin_lists);
     }
 	return return_sig_list;
 }
@@ -3010,7 +3000,7 @@ signal_list_t *create_output_pin(ast_node_t* var_declare, char *instance_name_pr
 	/* get the name of the pin */
 	name_of_pin = get_name_of_pin_at_bit(var_declare, -1, instance_name_prefix);
 	full_name = make_full_ref_name(instance_name_prefix, NULL, NULL, name_of_pin, -1);
-	vtr::free(name_of_pin);
+	odin_free(name_of_pin);
 
 	new_pin = allocate_npin();
 	new_pin->name = full_name;
@@ -3108,7 +3098,7 @@ signal_list_t *assignment_alias(ast_node_t* assignment, char *instance_name_pref
 		{
 			npin_t *pin = address->pins[i];
 			if (pin->name)
-				vtr::free(pin->name);
+				odin_free(pin->name);
 			pin->name = make_full_ref_name(instance_name_prefix, NULL, NULL, name, i);
 			add_pin_to_signal_list(right_inputs, pin);
 		}
@@ -3219,7 +3209,7 @@ signal_list_t *assignment_alias(ast_node_t* assignment, char *instance_name_pref
 			{
 				npin_t *pin = address->pins[i];
 				if (pin->name) 
-					vtr::free(pin->name);
+					odin_free(pin->name);
 				pin->name = make_full_ref_name(instance_name_prefix, NULL, NULL, name, pin_index++);
 				add_pin_to_signal_list(in_1, pin);
 			}
@@ -3229,7 +3219,7 @@ signal_list_t *assignment_alias(ast_node_t* assignment, char *instance_name_pref
 			{
 				npin_t *pin = data->pins[i];
 				if (pin->name)
-					vtr::free(pin->name);
+					odin_free(pin->name);
 				pin->name = make_full_ref_name(instance_name_prefix, NULL, NULL, name, pin_index++);
 				add_pin_to_signal_list(in_1, pin);
 			}
@@ -3239,7 +3229,7 @@ signal_list_t *assignment_alias(ast_node_t* assignment, char *instance_name_pref
 			{
 				npin_t *pin = we->pins[i];
 				if (pin->name)
-					vtr::free(pin->name);
+					odin_free(pin->name);
 				pin->name = make_full_ref_name(instance_name_prefix, NULL, NULL, name, pin_index++);
 				add_pin_to_signal_list(in_1, pin);
 			}
@@ -3308,8 +3298,8 @@ signal_list_t *assignment_alias(ast_node_t* assignment, char *instance_name_pref
 			}
 		}
 
-		vtr::free(out_list->strings);
-		vtr::free(out_list);
+		odin_free(out_list->strings);
+		odin_free(out_list);
 	}
 	else
 	{
@@ -3340,8 +3330,8 @@ signal_list_t *assignment_alias(ast_node_t* assignment, char *instance_name_pref
 					}
 				}
 				free_signal_list(right_outputs);
-				vtr::free(out_list->strings);
-				vtr::free(out_list);
+				odin_free(out_list->strings);
+				odin_free(out_list);
 			}
 
 
@@ -3405,8 +3395,8 @@ void terminate_registered_assignment(ast_node_t *always_node, signal_list_t* ass
 {
 	oassert(potential_clocks != NULL);
 
-	npin_t **list_dependence_pin = (npin_t **)vtr::calloc(assignment->count,sizeof(npin_t *));
-	ids *list_dependence_type = (ids *)vtr::calloc(assignment->count,sizeof(ids));
+	npin_t **list_dependence_pin = (npin_t **)odin_calloc(assignment->count,sizeof(npin_t *));
+	ids *list_dependence_type = (ids *)odin_calloc(assignment->count,sizeof(ids));
 	/* figure out which one is the clock */
 	if (local_clock_found == FALSE)
 	{
@@ -3498,11 +3488,11 @@ void terminate_registered_assignment(ast_node_t *always_node, signal_list_t* ass
 			//ff_node->name = node_name(ff_node, instance_name_prefix);
 			/* Name the flipflop based on the name of its output pin */
 			const char *ff_base_name = node_name_based_on_op(ff_node);
-			ff_node->name = (char *)vtr::malloc(sizeof(char) * (strlen(pin->name) + strlen(ff_base_name) + 2));
+			ff_node->name = (char *)odin_alloc(sizeof(char) * (strlen(pin->name) + strlen(ff_base_name) + 2));
 			odin_sprintf(ff_node->name, "%s_%s", pin->name, ff_base_name);
 
 			/* Copy over the initial value information from the net */
-			ref_string = (char *)vtr::calloc(strlen(pin->name)+100,sizeof(char));
+			ref_string = (char *)odin_calloc(strlen(pin->name)+100,sizeof(char));
 			strcpy(ref_string,pin->name);
 			strcat(ref_string,"_latch_initial_value");
 
@@ -3521,7 +3511,7 @@ void terminate_registered_assignment(ast_node_t *always_node, signal_list_t* ass
 				ff_node->initial_value = net->initial_value;
 			}
 			/* free the reference string */
-			vtr::free(ref_string);
+			odin_free(ref_string);
 
 
 			/* allocate the pins needed */
@@ -3552,7 +3542,7 @@ void terminate_registered_assignment(ast_node_t *always_node, signal_list_t* ass
 			}
 			add_driver_pin_to_net(net, ff_output_pin);
 
-			verilog_netlist->ff_nodes = (nnode_t**)vtr::realloc(verilog_netlist->ff_nodes, sizeof(nnode_t*)*(verilog_netlist->num_ff_nodes+1));
+			verilog_netlist->ff_nodes = (nnode_t**)odin_realloc(verilog_netlist->ff_nodes, sizeof(nnode_t*)*(verilog_netlist->num_ff_nodes+1));
 			verilog_netlist->ff_nodes[verilog_netlist->num_ff_nodes] = ff_node;
 			verilog_netlist->num_ff_nodes++;
 		}
@@ -3583,8 +3573,8 @@ void terminate_registered_assignment(ast_node_t *always_node, signal_list_t* ass
             }
 		}
 	}
-	vtr::free(list_dependence_pin);
-	vtr::free(list_dependence_type);
+	odin_free(list_dependence_pin);
+	odin_free(list_dependence_type);
 	for (i = 0; i < memory_inputs->count; i++)
 	{
 		npin_t *pin = memory_inputs->pins[i];
@@ -3717,7 +3707,7 @@ int alias_output_assign_pins_to_inputs(char_list_t *output_list, signal_list_t *
 			}
 
 			if (input_list->pins[i]->name)
-				vtr::free(input_list->pins[i]->name);
+				odin_free(input_list->pins[i]->name);
 
 			input_list->pins[i]->name = output_list->strings[i];
 			free_nnode(input_list->pins[i]->node);
@@ -3787,7 +3777,7 @@ signal_list_t *create_gate(ast_node_t* gate, char *instance_name_prefix)
 
 		    /* process the signal for the input gate */
 
-            in = (signal_list_t **)vtr::calloc(gate_instance->num_children - 2, sizeof(signal_list_t *));
+            in = (signal_list_t **)odin_calloc(gate_instance->num_children - 2, sizeof(signal_list_t *));
             for(i = 0; i < gate_instance->num_children - 2; i++) {
                 in[i] = netlist_expand_ast_of_module(gate_instance->children[i+2], instance_name_prefix);
             }
@@ -3832,7 +3822,7 @@ signal_list_t *create_gate(ast_node_t* gate, char *instance_name_prefix)
                 free_signal_list(in[i]);
             }
 
-            vtr::free(in);
+            odin_free(in);
 
 	    }
 
@@ -4053,7 +4043,7 @@ signal_list_t *create_operation_node(ast_node_t *op, signal_list_t **input_lists
 		new_pin1 = allocate_npin();
 		new_pin2 = allocate_npin();
 		new_net = allocate_nnet();
-		new_net->name = vtr::strdup(operation_node->name);
+		new_net->name = odin_strdup(operation_node->name);
 		/* hook the output pin into the node */
 		add_output_pin_to_node(operation_node, new_pin1, i);
 		/* hook up new pin 1 into the new net */
@@ -4185,7 +4175,7 @@ signal_list_t *create_if_question_mux_expressions(ast_node_t *if_ast, nnode_t *i
 	int i;
 
 	/* make storage for statements and expressions */
-	if_expressions = (signal_list_t**)vtr::malloc(sizeof(signal_list_t*)*2);
+	if_expressions = (signal_list_t**)odin_alloc(sizeof(signal_list_t*)*2);
 
 	/* now we will process the statements and add to the other ports */
 	for (i = 0; i < 2; i++)
@@ -4203,7 +4193,7 @@ signal_list_t *create_if_question_mux_expressions(ast_node_t *if_ast, nnode_t *i
 
 	/* now with all the lists sorted, we do the matching and proper propogation */
 	return_list = create_mux_expressions(if_expressions, if_node, 2, instance_name_prefix);
-	vtr::free(if_expressions);
+	odin_free(if_expressions);
 
 	return return_list;
 }
@@ -4304,7 +4294,7 @@ signal_list_t *create_if_mux_statements(ast_node_t *if_ast, nnode_t *if_node, ch
 	int i, j;
 
 	/* make storage for statements and expressions */
-	if_statements = (signal_list_t**)vtr::malloc(sizeof(signal_list_t*)*2);
+	if_statements = (signal_list_t**)odin_alloc(sizeof(signal_list_t*)*2);
 
 	/* now we will process the statements and add to the other ports */
 	for (i = 0; i < 2; i++)
@@ -4332,7 +4322,7 @@ signal_list_t *create_if_mux_statements(ast_node_t *if_ast, nnode_t *if_node, ch
 
 	/* now with all the lists sorted, we do the matching and proper propagation */
 	return_list = create_mux_statements(if_statements, if_node, 2, instance_name_prefix);
-	vtr::free(if_statements);
+	odin_free(if_statements);
 
 	return return_list;
 }
@@ -4389,7 +4379,7 @@ void create_case_control_signals(ast_node_t *case_list_of_items, ast_node_t *com
 		{
 			/* IF - this is a normal case item, then process the case match and the details of the statement */
 			signal_list_t *case_compare_expression;
-			signal_list_t **case_compares = (signal_list_t **)vtr::malloc(sizeof(signal_list_t*)*2);
+			signal_list_t **case_compares = (signal_list_t **)odin_alloc(sizeof(signal_list_t*)*2);
 			ast_node_t *logical_equal = create_node_w_type(BINARY_OPERATION, -1, -1);
 			logical_equal->types.operation.op = LOGICAL_EQUAL;
 
@@ -4410,7 +4400,7 @@ void create_case_control_signals(ast_node_t *case_list_of_items, ast_node_t *com
 			/* clean up */
 			free_signal_list(case_compare_expression);
 
-			vtr::free(case_compares);
+			odin_free(case_compares);
 		}
 		else if (case_list_of_items->children[i]->type == CASE_DEFAULT)
 		{
@@ -4451,7 +4441,7 @@ signal_list_t *create_case_mux_statements(ast_node_t *case_list_of_items, nnode_
 	long i, j;
 
 	/* make storage for statements and expressions */
-	case_statement = (signal_list_t**)vtr::malloc(sizeof(signal_list_t*)*(case_list_of_items->num_children));
+	case_statement = (signal_list_t**)odin_alloc(sizeof(signal_list_t*)*(case_list_of_items->num_children));
 
 	/* now we will process the statements and add to the other ports */
 	for (i = 0; i < case_list_of_items->num_children; i++)
@@ -4492,7 +4482,7 @@ signal_list_t *create_case_mux_statements(ast_node_t *case_list_of_items, nnode_
 
 	/* now with all the lists sorted, we do the matching and proper propogation */
 	return_list = create_mux_statements(case_statement, case_node, case_list_of_items->num_children, instance_name_prefix);
-	vtr::free(case_statement);
+	odin_free(case_statement);
 
 	return return_list;
 }
@@ -4510,7 +4500,7 @@ signal_list_t *create_mux_statements(signal_list_t **statement_lists, nnode_t *m
 	int out_index = 0;
 
 	/* allocate and initialize indexes */
-	per_case_statement_idx = (int*)vtr::calloc(sizeof(int), num_statement_lists);
+	per_case_statement_idx = (int*)odin_calloc(sizeof(int), num_statement_lists);
 
 	/* make the uber list and sort it */
 	combined_lists = combine_lists_without_freeing_originals(statement_lists, num_statement_lists);
@@ -4636,7 +4626,7 @@ signal_list_t *create_mux_statements(signal_list_t **statement_lists, nnode_t *m
 		free_signal_list(statement_lists[i]);
 	}
 	free_signal_list(combined_lists);
-	vtr::free(per_case_statement_idx);
+	odin_free(per_case_statement_idx);
 
 	return return_list;
 }
@@ -4724,7 +4714,7 @@ int find_smallest_non_numerical(ast_node_t *node, signal_list_t **input_list, in
 	int i;
 	int smallest;
 	int smallest_idx;
-	short *tested = (short*)vtr::calloc(sizeof(short), num_input_lists);
+	short *tested = (short*)odin_calloc(sizeof(short), num_input_lists);
 	short found_non_numerical = FALSE;
 
 	while(found_non_numerical == FALSE)
@@ -4771,7 +4761,7 @@ int find_smallest_non_numerical(ast_node_t *node, signal_list_t **input_list, in
 		}
 	}
 
-	vtr::free(tested);
+	odin_free(tested);
 
 	return smallest_idx;
 }
@@ -4853,7 +4843,7 @@ signal_list_t *create_dual_port_ram_block(ast_node_t* block, char *instance_name
 		block_connect->children[1]->hb_port = (void *)hb_ports;
 	}
 
-	signal_list_t **in_list = (signal_list_t **)vtr::malloc(sizeof(signal_list_t *)*block_list->num_children);
+	signal_list_t **in_list = (signal_list_t **)odin_alloc(sizeof(signal_list_t *)*block_list->num_children);
 	int out_port_size1 = 0;
 	int out_port_size2 = 0;
 	int current_idx = 0;
@@ -4892,7 +4882,7 @@ signal_list_t *create_dual_port_ram_block(ast_node_t* block, char *instance_name
 
 			/* Name any grounded ports in the block mapping */
 			for (j = port_size; j < port_size; j++)
-				block_node->input_pins[current_idx+j]->mapping = vtr::strdup(ip_name);
+				block_node->input_pins[current_idx+j]->mapping = odin_strdup(ip_name);
 			current_idx += port_size;
 		}
 	}
@@ -4925,7 +4915,7 @@ signal_list_t *create_dual_port_ram_block(ast_node_t* block, char *instance_name
 					block->children[1]->children[0]->types.identifier,
 					ip_name, -1);
 
-			t_memory_port_sizes *ps = (t_memory_port_sizes *)vtr::malloc(sizeof(t_memory_port_sizes));
+			t_memory_port_sizes *ps = (t_memory_port_sizes *)odin_alloc(sizeof(t_memory_port_sizes));
 			ps->size = out_port_size;
 			ps->name = alias_name;
 			memory_port_size_list = insert_in_vptr_list(memory_port_size_list, ps);
@@ -5054,7 +5044,7 @@ signal_list_t *create_single_port_ram_block(ast_node_t* block, char *instance_na
 	if (i != block_list->num_children)
 		error_message(NETLIST_ERROR, block->line_number, block->file_number, "Not all ports defined in hard block %s\n", ip_name);
 
-	signal_list_t **in_list = (signal_list_t **)vtr::malloc(sizeof(signal_list_t *)*block_list->num_children);
+	signal_list_t **in_list = (signal_list_t **)odin_alloc(sizeof(signal_list_t *)*block_list->num_children);
 	int out_port_size = 0;
 	for (i = 0; i < block_list->num_children; i++)
 	{
@@ -5089,7 +5079,7 @@ signal_list_t *create_single_port_ram_block(ast_node_t* block, char *instance_na
 
 			/* Name any grounded ports in the block mapping */
 			for (j = port_size; j < port_size; j++)
-				block_node->input_pins[current_idx+j]->mapping = vtr::strdup(ip_name);
+				block_node->input_pins[current_idx+j]->mapping = odin_strdup(ip_name);
 			current_idx += port_size;
 		}
 	}
@@ -5112,7 +5102,7 @@ signal_list_t *create_single_port_ram_block(ast_node_t* block, char *instance_na
 					block->children[1]->children[0]->types.identifier,
 					ip_name, -1
 			);
-			t_memory_port_sizes *ps = (t_memory_port_sizes *)vtr::malloc(sizeof(t_memory_port_sizes));
+			t_memory_port_sizes *ps = (t_memory_port_sizes *)odin_alloc(sizeof(t_memory_port_sizes));
 			ps->size = out_port_size;
 			ps->name = alias_name;
 			memory_port_size_list = insert_in_vptr_list(memory_port_size_list, ps);
@@ -5192,7 +5182,7 @@ signal_list_t *create_soft_single_port_ram_block(ast_node_t* block, char *instan
 	);
 
 	long i;
-	signal_list_t **in_list = (signal_list_t **)vtr::malloc(sizeof(signal_list_t *)*block_list->num_children);
+	signal_list_t **in_list = (signal_list_t **)odin_alloc(sizeof(signal_list_t *)*block_list->num_children);
 	int out_port_size = 0;
 	int current_idx = 0;
 	for (i = 0; i < block_list->num_children; i++)
@@ -5226,7 +5216,7 @@ signal_list_t *create_soft_single_port_ram_block(ast_node_t* block, char *instan
 
 			// Name any grounded ports in the block mapping
 			for (j = port_size; j < port_size; j++)
-				block_node->input_pins[current_idx+j]->mapping = vtr::strdup(ip_name);
+				block_node->input_pins[current_idx+j]->mapping = odin_strdup(ip_name);
 			current_idx += port_size;
 		}
 	}
@@ -5249,7 +5239,7 @@ signal_list_t *create_soft_single_port_ram_block(ast_node_t* block, char *instan
 					block->children[1]->children[0]->types.identifier,
 					block_connect->types.identifier, -1
 			);
-			t_memory_port_sizes *ps = (t_memory_port_sizes *)vtr::malloc(sizeof(t_memory_port_sizes));
+			t_memory_port_sizes *ps = (t_memory_port_sizes *)odin_alloc(sizeof(t_memory_port_sizes));
 			ps->size = out_port_size;
 			ps->name = alias_name;
 			memory_port_size_list = insert_in_vptr_list(memory_port_size_list, ps);
@@ -5307,7 +5297,7 @@ signal_list_t *create_soft_single_port_ram_block(ast_node_t* block, char *instan
 	for (i = 0; i < block_list->num_children; i++)
 		free_signal_list(in_list[i]);
 
-	vtr::free(in_list);
+	odin_free(in_list);
 
 	block_node->type = MEMORY;
 	block->net_node = block_node;
@@ -5343,7 +5333,7 @@ signal_list_t *create_soft_dual_port_ram_block(ast_node_t* block, char *instance
 	);
 
 	long i;
-	signal_list_t **in_list = (signal_list_t **)vtr::malloc(sizeof(signal_list_t *)*block_list->num_children);
+	signal_list_t **in_list = (signal_list_t **)odin_alloc(sizeof(signal_list_t *)*block_list->num_children);
 	int out1_size = 0;
 	int out2_size = 0;
 	int current_idx = 0;
@@ -5383,7 +5373,7 @@ signal_list_t *create_soft_dual_port_ram_block(ast_node_t* block, char *instance
 
 			// Name any grounded ports in the block mapping
 			for (j = port_size; j < port_size; j++)
-				block_node->input_pins[current_idx+j]->mapping = vtr::strdup(ip_name);
+				block_node->input_pins[current_idx+j]->mapping = odin_strdup(ip_name);
 
 			current_idx += port_size;
 		}
@@ -5415,9 +5405,9 @@ signal_list_t *create_soft_dual_port_ram_block(ast_node_t* block, char *instance
 			allocate_more_output_pins(block_node, port_size);
 			add_output_port_information(block_node, port_size);
 
-			t_memory_port_sizes *ps = (t_memory_port_sizes *)vtr::malloc(sizeof(t_memory_port_sizes));
+			t_memory_port_sizes *ps = (t_memory_port_sizes *)odin_alloc(sizeof(t_memory_port_sizes));
 			ps->size = port_size;
-			ps->name = vtr::strdup(alias_name);
+			ps->name = odin_strdup(alias_name);
 			memory_port_size_list = insert_in_vptr_list(memory_port_size_list, ps);
 
 			// make the implicit output list and hook up the outputs
@@ -5462,7 +5452,7 @@ signal_list_t *create_soft_dual_port_ram_block(ast_node_t* block, char *instance
 	for (i = 0; i < block_list->num_children; i++)
 		free_signal_list(in_list[i]);
 
-	vtr::free(in_list);
+	odin_free(in_list);
 
 	block_node->type = MEMORY;
 	block->net_node = block_node;
@@ -5576,7 +5566,7 @@ signal_list_t *create_hard_block(ast_node_t* block, char *instance_name_prefix)
 		block_connect->children[1]->hb_port = (void *)hb_ports;
 	}
 
-	in_list = (signal_list_t **)vtr::malloc(sizeof(signal_list_t *)*block_list->num_children);
+	in_list = (signal_list_t **)odin_alloc(sizeof(signal_list_t *)*block_list->num_children);
 	for (i = 0; i < block_list->num_children; i++)
 	{
 		int port_size;
@@ -5634,7 +5624,7 @@ signal_list_t *create_hard_block(ast_node_t* block, char *instance_name_prefix)
 
 			/* Name any grounded ports in the block mapping */
 			for (j = min_size; j < port_size; j++)
-				block_node->input_pins[current_idx+j]->mapping = vtr::strdup(ip_name);
+				block_node->input_pins[current_idx+j]->mapping = odin_strdup(ip_name);
 			current_idx += port_size;
 		}
 		else

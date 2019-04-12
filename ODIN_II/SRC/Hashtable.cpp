@@ -25,13 +25,14 @@ OTHER DEALINGS IN THE SOFTWARE.
 #include <stdlib.h>
 
 #include "Hashtable.hpp"
+#include "odin_util.h"
 #include "odin_types.h"
 #include "vtr_memory.h"
 
 void Hashtable::destroy_free_items()
 {
 	for(auto kv: my_map)
-		vtr::free(kv.second);
+		odin_free(kv.second);
 }
 
 void Hashtable::add(std::string key, void *item)

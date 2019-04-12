@@ -107,7 +107,7 @@ void depth_first_traverse_visualize(nnode_t *node, FILE *fp, int traverse_mark_n
 		/* mark that we have visitied this node now */
 		node->traverse_visited = traverse_mark_number;
 
-		temp_string= vtr::strdup(make_simple_name(node->name, "^-+.", '_').c_str());
+		temp_string= odin_strdup(make_simple_name(node->name, "^-+.", '_').c_str());
 		if ((node->type == FF_NODE) || (node->type == BUF_NODE))
 		{
 			fprintf(fp, "\t\"%s\" [shape=box];\n", temp_string);
@@ -128,7 +128,7 @@ void depth_first_traverse_visualize(nnode_t *node, FILE *fp, int traverse_mark_n
 		{
 			fprintf(fp, "\t\"%s\"\n", temp_string);
 		}
-		vtr::free(temp_string);
+		odin_free(temp_string);
 
 		for (i = 0; i < node->num_output_pins; i++)
 		{
@@ -148,24 +148,24 @@ void depth_first_traverse_visualize(nnode_t *node, FILE *fp, int traverse_mark_n
 //				if ((node->type == FF_NODE) || (node->type == INPUT_NODE) || (node->type == OUTPUT_NODE))
 //					continue;
 
-				temp_string= vtr::strdup(make_simple_name(node->name, "^-+.", '_').c_str());
-				temp_string2= vtr::strdup(make_simple_name(next_node->name, "^-+.", '_').c_str());
+				temp_string= odin_strdup(make_simple_name(node->name, "^-+.", '_').c_str());
+				temp_string2= odin_strdup(make_simple_name(next_node->name, "^-+.", '_').c_str());
 				/* renaming for output nodes */
 				if (node->type == OUTPUT_NODE)
 				{
 					/* renaming for output nodes */
                     char* temp_string_old = temp_string;
-					temp_string = (char*)vtr::malloc(sizeof(char)*strlen(temp_string)+1+2);
+					temp_string = (char*)odin_alloc(sizeof(char)*strlen(temp_string)+1+2);
 					odin_sprintf(temp_string, "%s_O", temp_string_old);
-                    free(temp_string_old);
+                    odin_free(temp_string_old);
 				}
 				if (next_node->type == OUTPUT_NODE)
 				{
 					/* renaming for output nodes */
                     char* temp_string2_old = temp_string2;
-					temp_string2 = (char*)vtr::malloc(sizeof(char)*strlen(temp_string2)+1+2);
+					temp_string2 = (char*)odin_alloc(sizeof(char)*strlen(temp_string2)+1+2);
 					odin_sprintf(temp_string2, "%s_O", temp_string2_old);
-                    free(temp_string2_old);
+                    odin_free(temp_string2_old);
 				}
 
 				fprintf(fp, "\t\"%s\" -> \"%s\"", temp_string, temp_string2);
@@ -173,8 +173,8 @@ void depth_first_traverse_visualize(nnode_t *node, FILE *fp, int traverse_mark_n
 					fprintf(fp, "[label=\"%s\"]", next_net->fanout_pins[j]->name);
 				fprintf(fp, ";\n");
 
-				vtr::free(temp_string);
-				vtr::free(temp_string2);
+				odin_free(temp_string);
+				odin_free(temp_string2);
 
 				/* recursive call point */
 				depth_first_traverse_visualize(next_node, fp, traverse_mark_number);
@@ -219,7 +219,7 @@ void forward_traversal_net_graph_display(FILE *fp, short marker_value, nnode_t *
 	char *temp_string;
 	char *temp_string2;
 
-	stack_of_nodes = (nnode_t**)vtr::malloc(sizeof(nnode_t*)*1);
+	stack_of_nodes = (nnode_t**)odin_alloc(sizeof(nnode_t*)*1);
 	stack_of_nodes[0] = node;
 
 	while (index_in_stack != num_stack_of_nodes)
@@ -230,7 +230,7 @@ void forward_traversal_net_graph_display(FILE *fp, short marker_value, nnode_t *
 		current_node->traverse_visited = marker_value;
 
 		/* printout the details of it */
-		temp_string= vtr::strdup(make_simple_name(current_node->name, "^-+.", '_').c_str());
+		temp_string= odin_strdup(make_simple_name(current_node->name, "^-+.", '_').c_str());
 		if (index_in_stack == 0)
 		{
 			fprintf(fp, "\t%s [shape=box,color=red];\n", temp_string);
@@ -255,7 +255,7 @@ void forward_traversal_net_graph_display(FILE *fp, short marker_value, nnode_t *
 		{
 			fprintf(fp, "\t%s [label=\"%d:%d\"];\n", temp_string, current_node->forward_level, current_node->backward_level);
 		}
-		vtr::free(temp_string);
+		odin_free(temp_string);
 
 		/* at each node visit all the outputs */
 		for (j = 0; j < current_node->num_output_pins; j++)
@@ -274,30 +274,30 @@ void forward_traversal_net_graph_display(FILE *fp, short marker_value, nnode_t *
 				if (next_node == NULL)
 					continue;
 
-				temp_string= vtr::strdup(make_simple_name(current_node->name, "^-+.", '_').c_str());
-				temp_string2= vtr::strdup(make_simple_name(next_node->name, "^-+.", '_').c_str());
+				temp_string= odin_strdup(make_simple_name(current_node->name, "^-+.", '_').c_str());
+				temp_string2= odin_strdup(make_simple_name(next_node->name, "^-+.", '_').c_str());
 				if (current_node->type == OUTPUT_NODE)
 				{
 					/* renaming for output nodes */
-					temp_string = (char*)vtr::realloc(temp_string, sizeof(char)*strlen(temp_string)+1+2);
+					temp_string = (char*)odin_realloc(temp_string, sizeof(char)*strlen(temp_string)+1+2);
 					odin_sprintf(temp_string, "%s_O", temp_string);
 				}
 				if (next_node->type == OUTPUT_NODE)
 				{
 					/* renaming for output nodes */
-					temp_string2 = (char*)vtr::realloc(temp_string2, sizeof(char)*strlen(temp_string2)+1+2);
+					temp_string2 = (char*)odin_realloc(temp_string2, sizeof(char)*strlen(temp_string2)+1+2);
 					odin_sprintf(temp_string2, "%s_O", temp_string2);
 				}
 
 				fprintf(fp, "\t%s -> %s [label=\"%s\"];\n", temp_string, temp_string2, current_node->output_pins[j]->net->fanout_pins[k]->name);
 
-				vtr::free(temp_string);
-				vtr::free(temp_string2);
+				odin_free(temp_string);
+				odin_free(temp_string2);
 
 				if ((next_node->traverse_visited != marker_value) && (next_node->type != FF_NODE))
 				{
 					/* IF - not visited yet then add to list */
-					stack_of_nodes = (nnode_t**)vtr::realloc(stack_of_nodes, sizeof(nnode_t*)*(num_stack_of_nodes+1));
+					stack_of_nodes = (nnode_t**)odin_realloc(stack_of_nodes, sizeof(nnode_t*)*(num_stack_of_nodes+1));
 					stack_of_nodes[num_stack_of_nodes] = next_node;
 					num_stack_of_nodes ++;
 				}
@@ -322,7 +322,7 @@ void backward_traversal_net_graph_display(FILE *fp, short marker_value, nnode_t 
 	int index_in_stack = 0;
 	int num_stack_of_nodes = 1;
 
-	stack_of_nodes = (nnode_t**)vtr::malloc(sizeof(nnode_t*)*1);
+	stack_of_nodes = (nnode_t**)odin_alloc(sizeof(nnode_t*)*1);
 	stack_of_nodes[0] = node;
 
 	while (index_in_stack != num_stack_of_nodes)
@@ -333,7 +333,7 @@ void backward_traversal_net_graph_display(FILE *fp, short marker_value, nnode_t 
 		current_node->traverse_visited = marker_value;
 
 		/* printout the details of it */
-		temp_string= vtr::strdup(make_simple_name(current_node->name, "^-+.", '_').c_str());
+		temp_string= odin_strdup(make_simple_name(current_node->name, "^-+.", '_').c_str());
 		if (index_in_stack != 0)
 		{
 			if ((current_node->type == FF_NODE) || (current_node->type == BUF_NODE))
@@ -357,7 +357,7 @@ void backward_traversal_net_graph_display(FILE *fp, short marker_value, nnode_t 
 				fprintf(fp, "\t%s [label=\"%d:%d\"];\n", temp_string, current_node->forward_level, current_node->backward_level);
 			}
 		}
-		vtr::free(temp_string);
+		odin_free(temp_string);
 
 		/* at each node visit all the outputs */
 		for (j = 0; j < current_node->num_input_pins; j++)
@@ -374,18 +374,18 @@ void backward_traversal_net_graph_display(FILE *fp, short marker_value, nnode_t 
 			if (next_node == NULL)
 				continue;
 
-			temp_string= vtr::strdup(make_simple_name(current_node->name, "^-+.", '_').c_str());
-			temp_string2= vtr::strdup(make_simple_name(next_node->name, "^-+.", '_').c_str());
+			temp_string= odin_strdup(make_simple_name(current_node->name, "^-+.", '_').c_str());
+			temp_string2= odin_strdup(make_simple_name(next_node->name, "^-+.", '_').c_str());
 
 			fprintf(fp, "\t%s -> %s [label=\"%s\"];\n", temp_string2, temp_string, current_node->input_pins[j]->name);
 
-			vtr::free(temp_string);
-			vtr::free(temp_string2);
+			odin_free(temp_string);
+			odin_free(temp_string2);
 
 			if ((next_node->traverse_visited != marker_value) && (next_node->type != FF_NODE))
 			{
 				/* IF - not visited yet then add to list */
-				stack_of_nodes = (nnode_t**)vtr::realloc(stack_of_nodes, sizeof(nnode_t*)*(num_stack_of_nodes+1));
+				stack_of_nodes = (nnode_t**)odin_realloc(stack_of_nodes, sizeof(nnode_t*)*(num_stack_of_nodes+1));
 				stack_of_nodes[num_stack_of_nodes] = next_node;
 				num_stack_of_nodes ++;
 			}

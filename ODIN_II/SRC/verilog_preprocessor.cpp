@@ -17,26 +17,24 @@ struct veri_Defines veri_defines;
 /* Function declarations */
 FILE* open_source_file(char* filename, std::string parent_path);
 FILE *remove_comments(FILE *source);
-FILE *format_verilog_file(FILE *source);
-FILE *format_verilog_variable(FILE * src, FILE *dest);
 /*
  * Initialize the preprocessor by allocating sufficient memory and setting sane values
  */
 int init_veri_preproc()
 {
-	veri_includes.included_files = (veri_include **) vtr::calloc(DefaultSize, sizeof(veri_include *));
+	veri_includes.included_files = (veri_include **) odin_calloc(DefaultSize, sizeof(veri_include *));
 	if (veri_includes.included_files == NULL)
 	{
-		perror("veri_includes.included_files : vtr::calloc ");
+		perror("veri_includes.included_files : odin_calloc ");
 		return -1;
 	}
 	veri_includes.current_size = DefaultSize;
 	veri_includes.current_index = 0;
 
-	veri_defines.defined_constants = (veri_define **) vtr::calloc(DefaultSize, sizeof(veri_define *));
+	veri_defines.defined_constants = (veri_define **) odin_calloc(DefaultSize, sizeof(veri_define *));
 	if (veri_defines.defined_constants == NULL)
 	{
-		perror("veri_defines.defined_constants : vtr::calloc ");
+		perror("veri_defines.defined_constants : odin_calloc ");
 		return -1;
 	}
 	veri_defines.current_size = DefaultSize;
@@ -62,7 +60,7 @@ int cleanup_veri_preproc()
 	def_iterator = NULL;
 	veri_defines.current_index = 0;
 	veri_defines.current_size = 0;
-	vtr::free(veri_defines.defined_constants);
+	odin_free(veri_defines.defined_constants);
 
 	for (i = 0; i < veri_includes.current_index && i < veri_includes.current_size; inc_iterator = veri_includes.included_files[++i])
 	{
@@ -71,7 +69,7 @@ int cleanup_veri_preproc()
 	inc_iterator = NULL;
 	veri_includes.current_index = 0;
 	veri_includes.current_size = 0;
-	vtr::free(veri_includes.included_files);
+	odin_free(veri_includes.included_files);
 
 	//fprintf(stderr, " --- Finished\n");
 
@@ -86,13 +84,13 @@ void clean_veri_define(veri_define *current)
 	if (current != NULL)
 	{
 		//fprintf(stderr, "\tCleaning Symbol: %s, ", current->symbol);
-		vtr::free(current->symbol);
+		odin_free(current->symbol);
 		//fprintf(stderr, "Value: %s ", current->value);
-		vtr::free(current->value);
+		odin_free(current->value);
 
 		current->defined_in = NULL;
 
-		vtr::free(current);
+		odin_free(current);
 		current=NULL;
 		//fprintf(stderr, "...done\n");
 	}
@@ -106,9 +104,9 @@ void clean_veri_include(veri_include *current)
 	if (current != NULL)
 	{
 		//fprintf(stderr, "\tCleaning Include: %s ", current->path);
-		vtr::free(current->path);
+		odin_free(current->path);
 
-		vtr::free(current);
+		odin_free(current);
 		current = NULL;
 		//fprintf(stderr, "...done\n");
 	}
@@ -122,17 +120,17 @@ int add_veri_define(char *symbol, char *value, int line, veri_include *defined_i
 {
 	int i;
 	veri_define *def_iterator = veri_defines.defined_constants[0];
-	veri_define *new_def = (veri_define *)vtr::malloc(sizeof(veri_define));
+	veri_define *new_def = (veri_define *)odin_alloc(sizeof(veri_define));
 	if (new_def == NULL)
 	{
-		perror("new_def : vtr::malloc ");
+		perror("new_def : odin_alloc ");
 		return -1;
 	}
 
 	/* Check to see if there's enough space in our lookup table and reallocate if not. */
 	if (veri_defines.current_index == veri_defines.current_size)
 	{
-		veri_defines.defined_constants = (veri_define **)vtr::realloc(veri_defines.defined_constants, (size_t)(veri_defines.current_size * 2) * sizeof(veri_define *));
+		veri_defines.defined_constants = (veri_define **)odin_realloc(veri_defines.defined_constants, (size_t)(veri_defines.current_size * 2) * sizeof(veri_define *));
 		//In a perfect world there is a check here to make sure realloc succeded
 		veri_defines.current_size *= 2;
 	}
@@ -149,7 +147,7 @@ int add_veri_define(char *symbol, char *value, int line, veri_include *defined_i
 #ifndef BLOCK_EMPTY_DEFINES
 			{
 				warning_message(PARSE_ERROR, -1, -1, "The new value of %s is empty\n\n", symbol);
-				vtr::free(def_iterator->value);
+				odin_free(def_iterator->value);
 				def_iterator->value =NULL;
 			}
 #else
@@ -162,18 +160,18 @@ int add_veri_define(char *symbol, char *value, int line, veri_include *defined_i
 			{
 				warning_message(PARSE_ERROR, -1, -1, "The value of %s has been redefined to %s, the previous value was %s\n\n",
 					symbol, value, def_iterator->value);
-				vtr::free(def_iterator->value);
-				def_iterator->value = (char *)vtr::strdup(value);
+				odin_free(def_iterator->value);
+				def_iterator->value = (char *)odin_strdup(value);
 			}
 
-			vtr::free(new_def);
+			odin_free(new_def);
 			return -2;
 		}
 	}
 
 	/* Create the new define and initalize it. */
-	new_def->symbol = (char *)vtr::strdup(symbol);
-	new_def->value = (value == NULL)? NULL : (char *)vtr::strdup(value);
+	new_def->symbol = (char *)odin_strdup(symbol);
+	new_def->value = (value == NULL)? NULL : (char *)odin_strdup(value);
 	new_def->line = line;
 	new_def->defined_in = defined_in;
 
@@ -191,17 +189,17 @@ veri_include* add_veri_include(const char *path, int line, veri_include *include
 {
 	int i;
 	veri_include *inc_iterator = veri_includes.included_files[0];
-	veri_include *new_inc = (veri_include *)vtr::malloc(sizeof(veri_include));
+	veri_include *new_inc = (veri_include *)odin_alloc(sizeof(veri_include));
 	if (new_inc == NULL)
 	{
-		perror("new_inc : vtr::malloc ");
+		perror("new_inc : odin_alloc ");
 		return NULL;
 	}
 
 	/* Check to see if there's enough space in our lookup table and reallocate if not. */
 	if (veri_includes.current_index == veri_includes.current_size)
 	{
-		veri_includes.included_files = (veri_include **)vtr::realloc(veri_includes.included_files, (size_t)(veri_includes.current_size * 2) * sizeof(veri_include *));
+		veri_includes.included_files = (veri_include **)odin_realloc(veri_includes.included_files, (size_t)(veri_includes.current_size * 2) * sizeof(veri_include *));
 		//In a perfect world there is a check here to make sure realloc succeded
 		veri_includes.current_size *= 2;
 	}
@@ -212,7 +210,7 @@ veri_include* add_veri_include(const char *path, int line, veri_include *include
 			warning_message(PARSE_ERROR, line, -1, "Warning: including %s multiple times\n", path);
 	
 
-	new_inc->path = vtr::strdup(path);
+	new_inc->path = odin_strdup(path);
 	new_inc->included_from = included_from;
 	new_inc->line = line;
 
@@ -337,10 +335,9 @@ FILE *remove_comments(FILE *source)
 
 	char line[MaxLine];
 	int in_multiline_comment = FALSE;
-	while (fgets(line, MaxLine, source))
+	while (read_line_and_trim(line, MaxLine, source))
 	{
-		unsigned int i;
-		for (i = 0; i < strnlen(line, MaxLine); i++)
+		for (size_t i = 0; i < strnlen(line, MaxLine); i++)
 		{
 			if (!in_multiline_comment)
 			{
@@ -382,24 +379,22 @@ void veri_preproc_bootstraped(FILE *original_source, FILE *preproc_producer, ver
 	// Strip the comments from the source file producing a temporary source file.
 	FILE *source = remove_comments(original_source);
 
-	source = format_verilog_file(source);
-
 	int line_number = 1;
-	veri_flag_stack *skip = (veri_flag_stack *)vtr::calloc(1, sizeof(veri_flag_stack));;
+	veri_flag_stack *skip = (veri_flag_stack *)odin_calloc(1, sizeof(veri_flag_stack));;
 	char line[MaxLine];
 	char *token;
 	veri_include *new_include = NULL;
 
 
-	while (NULL != fgets(line, MaxLine, source))
+	while (read_line_and_trim(line, MaxLine, source))
 	{
 		//fprintf(stderr, "%s:%ld\t%s", current_include->path,line_number, line);
 		char proc_line[MaxLine] ;
 		char symbol[MaxLine] ;
 		char *p_proc_line = proc_line ;
-		char *last_pch, *pch, *pch_end ;
-		// advance past all whitespace
-		last_pch = trim(line) ;
+		char *pch, *pch_end ;
+		char *last_pch = line;
+
 		// start searching for backtick
 		pch = strchr( last_pch, '`' ) ;
 		while ( pch ) {
@@ -426,7 +421,7 @@ void veri_preproc_bootstraped(FILE *original_source, FILE *preproc_producer, ver
 			last_pch = pch_end ;
 			pch = strchr( last_pch+1, '`' ) ;
 		}
-		vtr::strncpy( p_proc_line, last_pch, MaxLine) ;
+		vtr::strncpy( p_proc_line, last_pch, MaxLine) ;stack
 		vtr::strncpy( line, proc_line, MaxLine) ;
 
 		//fprintf(stderr, "%s:%ld\t%s\n", current_include->path,line_number, line);
@@ -434,14 +429,14 @@ void veri_preproc_bootstraped(FILE *original_source, FILE *preproc_producer, ver
 		/* Preprocessor directives have a backtick on the first column. */
 		if (line[0] == '`')
 		{
-			token = trim((char *)strtok(line, " \t"));
+			token = strtok(line, " ");
 			//printf("preproc first token: %s\n", token);
 			/* If we encounter an `included directive we want to recurse using included_file and
 			 * new_include in place of source and current_include
 			 */
 			if (top(skip) < 1 && strcmp(token, "`include") == 0)
 			{
-				token = trim((char *)strtok(NULL, "\""));
+				token = strtok(NULL, "\"");
 				FILE *included_file = open_source_file(token,current_include->path);
 
 				/* If we failed to open the included file handle the error */
@@ -469,20 +464,17 @@ void veri_preproc_bootstraped(FILE *original_source, FILE *preproc_producer, ver
 				char *value = NULL;
 
 				/* strtok is destructive to the original string which we need to retain unchanged, this fixes it. */
-				fprintf(preproc_producer, "`define %s\n", line + 1 + strnlen(line, MaxLine));
+				// fprintf(preproc_producer, "`define %s\n", line + 1 + strnlen(line, MaxLine));
+				fprintf(preproc_producer, "\n");
 				//printf("\tIn define: %s", token + 1 + strnlen(token, MaxLine));
 
-				token = trim(strtok(NULL, " \t"));
+				token = strtok(NULL, " ");
 				//printf("token is: %s\n", token);
 
 				// symbol value can potentially be to the end of the line!
-				value = trim(strtok(NULL, "\r\n"));
+				value = strtok(NULL, " ");
 				//printf("value is: %s\n", value);
 
-				if ( value ) {
-					// trim it again just in case
-					value = trim(value);
-				}
 				add_veri_define(token, value, line_number, current_include);
 			}
 			/* If we encounter a `undef preprocessor directive we want to remove the corresponding
@@ -494,7 +486,7 @@ void veri_preproc_bootstraped(FILE *original_source, FILE *preproc_producer, ver
 				/* strtok is destructive to the original string which we need to retain unchanged, this fixes it. */
 				fprintf(preproc_producer, "`undef %s", line + 1 + strnlen(line, MaxLine));
 
-				token = trim(strtok(NULL, " \t"));
+				token = strtok(NULL, " ");
 
 				is_defined = veri_is_defined(token);
 
@@ -511,7 +503,7 @@ void veri_preproc_bootstraped(FILE *original_source, FILE *preproc_producer, ver
 				if ( top(skip) < 1 ) {
 					int is_defined = 0;
 
-					token = trim(strtok(NULL, " \t"));
+					token = strtok(NULL, " ");
 					is_defined = veri_is_defined(token);
 					if(is_defined < 0) //If we are unable to locate the symbol in the table
 					{
@@ -533,7 +525,7 @@ void veri_preproc_bootstraped(FILE *original_source, FILE *preproc_producer, ver
 				if ( top(skip) < 1 ) {
 					int is_defined = 0;
 
-					token = trim(strtok(NULL, " \t"));
+					token = strtok(NULL, " ");
 					is_defined = veri_is_defined(token);
 					if(is_defined >= 0) //If we are able to locate the symbol in the table
 					{
@@ -595,41 +587,10 @@ void veri_preproc_bootstraped(FILE *original_source, FILE *preproc_producer, ver
 		token = NULL;
 	}
 	fclose(source);
-	vtr::free(skip);
+	odin_free(skip);
 }
 
-/* General Utility methods ------------------------------------------------- */
 
-/**
- * the trim function remove consequent whitespace and remove trailing whitespace
- */
-inline static bool are_both_whitespace(char a, char b) 
-{ 
-	return isspace(a) && isspace(b);
-}
-
-char* trim(char *string)
-{
-	if (!string)
-		return string;
-
-	std::string temp = string;
-	//replace large space{1 or more} with single space inside text
-	std::string::iterator new_end = std::unique(temp.begin(), temp.end(), are_both_whitespace);
-	temp.erase(new_end, temp.end());   
-
-	//remove head whitespace
-	if( temp.length() > 0 && isspace(temp[0]) )					temp.erase(0,1);
-	//remove trailing whitespace
-	if( temp.length() > 0 && isspace(temp[temp.length()-1]) )	temp.erase(temp.length()-1,1);
-	//copy string over
-	if( temp.length() > 0)										memcpy(string,temp.c_str(), temp.length());
-	
-	//make sure we have a nul terminated string
-	string[temp.length()] = '\0';
-
-	return string;
-}
 
 /* ------------------------------------------------------------------------- */
 
@@ -655,7 +616,7 @@ int pop(veri_flag_stack *stack)
 		int flag = top->flag;
 
 		stack->top = top->next;
-		vtr::free(top);
+		odin_free(top);
 
 		return flag;
 	}
@@ -665,143 +626,14 @@ void push(veri_flag_stack *stack, int flag)
 {
 	if(stack != NULL)
 	{
-		veri_flag_node *new_node = (veri_flag_node *)vtr::malloc(sizeof(veri_flag_node));
+		veri_flag_node *new_node = (veri_flag_node *)odin_alloc(sizeof(veri_flag_node));
 		new_node->next = stack->top;
 		new_node->flag = flag;
 
 		stack->top = new_node;
 	}
 }
-FILE *format_verilog_file(FILE *source)
-{
-	FILE *destination = tmpfile();
-	char searchString [4][7]= {"input","output","reg","wire"};
-	char templine[MaxLine] = { 0 };
-	char *line = templine;
-	char ch;
-	unsigned i;
-	char temp[10];
-	int j;
-	static const char *pattern = "\\binput\\b|\\boutput\\b|\\breg\\b|\\bwire\\b";
-	i = 0;
-	while( (ch = getc(source) ) != ';')
-	{
-		line[i++] = ch;
-		if (ch == '`')
-		{
-			while( (ch = getc(source)) != '\n')
-			{
-				line[i++] = ch;
-			}
-			line[i] = '\n';
-			fputs(line,destination);
-			i = 0;
-		}
 
-	}
-	line[i++] = ch;
-	line[i] = '\0';
-	std::string sub_line = find_substring(line,"module",2);
-	sprintf(line,"%s",sub_line.c_str());
-	line = search_replace(line,"\n","",2);
-
-	if (! validate_string_regex(line, pattern))
-	{
-		free(line);
-	 	rewind(source);
-		return source;
-	}
-	for (i = 0; i < 4; i++)
-	{
-		char *line_cpy = vtr::strdup(line);
-		free(line);
-		line = search_replace(line_cpy,searchString[i],"",2);
-		vtr::free(line_cpy);
-	}
-	i = 0;
-	while (i < strnlen(line, MaxLine))
-	{
-		if(line[i] == '[')
-		{
-			j = 0;
-			while(line[i] != ']')
-			{
-				temp[j++] = line[i];
-				i++;
-			}
-			temp[j++] = line[i];
-			temp[j] = '\0';
-			line = search_replace(line,temp,"",2);
-			i = 0;
-		}
-		else
-			i++;
-	}
-	fputs(line, destination);
-	vtr::free(line);
-	rewind(source);
-	destination = format_verilog_variable(source,destination);
-	rewind(destination);
-	return destination;
-}
-
-FILE *format_verilog_variable(FILE * src, FILE *dest)
-{
-	char ch;
-	int i;
-	char line[MaxLine];
-	char *tempLine;
-	char *pos;
-	while( (ch = getc(src) ) != ';')
-	{
-		if(ch == '(')
-		{
-			i = 0;
-			while( (ch = getc(src) ) != ')')
-			{
-				if (ch == ',')
-				{
-					line[i++] = ';';
-					line[i] = '\0';
-					pos = strstr(line,"reg");
-					if (pos != NULL)
-					{
-						tempLine = search_replace(line,"reg","",2);
-						fputs(tempLine,dest);
-						tempLine = search_replace(line,"output","",2);
-						fputs(tempLine,dest);
-					}
-					else
-					{
-						fputs(line, dest);
-					}
-					i = 0;
-				}
-				else
-					line[i++] = ch;
-			}
-			line[i-1] = ';';
-			line[i] = '\0';
-			pos = strstr(line,"reg");
-			if (pos != NULL)
-			{
-				tempLine = search_replace(line,"reg","",2);
-				fputs(tempLine,dest);
-				tempLine = search_replace(line,"output","",2);
-				fputs(tempLine,dest);
-			}
-			else
-			{
-				fputs(line, dest);
-			}
-		}
-	}
-	while( (ch = getc(src) ) != EOF)
-	{
-		fputc(ch, dest);
-	}
-	return dest;
-}
 
 /* ------------------------------------------------------------------------- */
 

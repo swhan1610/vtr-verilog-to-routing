@@ -148,7 +148,7 @@ void remap_input_port_to_memory(nnode_t *node, signal_list_t *signals, const cha
 	for (i = 0; i < signals->count; i++, j++)
 	{
 		npin_t *pin = signals->pins[i];
-		pin->mapping = vtr::strdup(port_name);
+		pin->mapping = odin_strdup(port_name);
 		remap_pin_to_new_node(pin, node, j);
 	}
 }
@@ -184,7 +184,7 @@ void add_input_port_to_memory(nnode_t *node, signal_list_t *signalsvar, const ch
 		npin_t *pin = signalsvar->pins[i];
 		//if (pin->node && pin->node->input_pins && pin->node->input_pins[pin->pin_node_idx])
 		//	pin->node->input_pins[pin->pin_node_idx] = NULL;
-		pin->mapping = vtr::strdup(port_name);
+		pin->mapping = odin_strdup(port_name);
 		//if (pin->node)
 		//	remap_pin_to_new_node(pin, node, j);
 		//else
@@ -219,7 +219,7 @@ void remap_output_port_to_memory(nnode_t *node, signal_list_t *signalsvar, char 
 	for (i = 0; i < signalsvar->count; i++, j++)
 	{
 		npin_t *pin = signalsvar->pins[i];
-		pin->mapping = vtr::strdup(port_name);
+		pin->mapping = odin_strdup(port_name);
 		remap_pin_to_new_node(pin, node, j);
 	}
 }
@@ -253,7 +253,7 @@ void add_output_port_to_memory(nnode_t *node, signal_list_t *signals, const char
 	for (i = 0; i < signals->count; i++, j++)
 	{
 		npin_t *pin = signals->pins[i];
-		pin->mapping = vtr::strdup(port_name);
+		pin->mapping = odin_strdup(port_name);
 		add_output_pin_to_node(node, pin, j);
 	}
 }
@@ -441,10 +441,10 @@ void split_sp_memory_depth(nnode_t *node, int split_size)
 		remap_pin_to_new_node(pin, mux, 0);
 
 		connect_nodes(new_mem_node1, i, mux, 2);
-		new_mem_node1->output_pins[i]->mapping = vtr::strdup("out");
+		new_mem_node1->output_pins[i]->mapping = odin_strdup("out");
 
 		connect_nodes(new_mem_node2, i, mux, 3);
-		new_mem_node2->output_pins[i]->mapping = vtr::strdup("out");
+		new_mem_node2->output_pins[i]->mapping = odin_strdup("out");
 	}
 
 	free_sp_ram_signals(signals);
@@ -586,10 +586,10 @@ void split_dp_memory_depth(nnode_t *node, int split_size)
 		remap_pin_to_new_node(pin, mux, 0);
 
 		connect_nodes(new_mem_node1, i, mux, 2);
-		new_mem_node1->output_pins[i]->mapping = vtr::strdup("out1");
+		new_mem_node1->output_pins[i]->mapping = odin_strdup("out1");
 
 		connect_nodes(new_mem_node2, i, mux, 3);
-		new_mem_node2->output_pins[i]->mapping = vtr::strdup("out1");
+		new_mem_node2->output_pins[i]->mapping = odin_strdup("out1");
 	}
 
 	/* Copy over the output pins for the new memory */
@@ -610,10 +610,10 @@ void split_dp_memory_depth(nnode_t *node, int split_size)
 		remap_pin_to_new_node(pin, mux, 0);
 
 		connect_nodes(new_mem_node1, pin_index, mux, 2);
-		new_mem_node1->output_pins[pin_index]->mapping = vtr::strdup("out2");
+		new_mem_node1->output_pins[pin_index]->mapping = odin_strdup("out2");
 
 		connect_nodes(new_mem_node2, pin_index, mux, 3);
-		new_mem_node2->output_pins[pin_index]->mapping = vtr::strdup("out2");
+		new_mem_node2->output_pins[pin_index]->mapping = odin_strdup("out2");
 	}
 
 	free_dp_ram_signals(signals);
@@ -1220,7 +1220,7 @@ void pad_memory_output_port(nnode_t *node, netlist_t * /*netlist*/, t_model *mod
 			npin_t *new_pin = allocate_npin();
 			// Pad outputs with a unique and descriptive name to avoid collisions.
 			new_pin->name = append_string("", "unconnected_memory_output~%ld", pad_pin_number++);
-			new_pin->mapping = vtr::strdup(port_name);
+			new_pin->mapping = odin_strdup(port_name);
 			add_output_pin_to_node(node, new_pin, i);
 		}
 		node->output_port_sizes[port_number] = target_size;
@@ -1261,7 +1261,7 @@ void pad_memory_input_port(nnode_t *node, netlist_t *netlist, t_model *model, co
 		for (i = port_index + port_size; i < port_index + target_size; i++)
 		{
 			add_input_pin_to_node(node, get_pad_pin(netlist), i);
-			node->input_pins[i]->mapping = vtr::strdup(port_name);
+			node->input_pins[i]->mapping = odin_strdup(port_name);
 		}
 
 		node->input_port_sizes[port_number] = target_size;
@@ -1297,7 +1297,7 @@ sp_ram_signals *get_sp_ram_signals(nnode_t *node)
 	oassert(is_sp_ram(node));
 
 	ast_node_t *ast_node = node->related_ast_node;
-	sp_ram_signals *signals = (sp_ram_signals *)vtr::malloc(sizeof(sp_ram_signals));
+	sp_ram_signals *signals = (sp_ram_signals *)odin_alloc(sizeof(sp_ram_signals));
 
 	// Separate the input signals according to their mapping.
 	signals->addr = init_signal_list();
@@ -1352,7 +1352,7 @@ void free_sp_ram_signals(sp_ram_signals *signalsvar)
 	free_signal_list(signalsvar->addr);
 	free_signal_list(signalsvar->out);
 
-	vtr::free(signalsvar);
+	odin_free(signalsvar);
 }
 
 dp_ram_signals *get_dp_ram_signals(nnode_t *node)
@@ -1360,7 +1360,7 @@ dp_ram_signals *get_dp_ram_signals(nnode_t *node)
 	oassert(is_dp_ram(node));
 
 	ast_node_t *ast_node = node->related_ast_node;
-	dp_ram_signals *signals = (dp_ram_signals *)vtr::malloc(sizeof(dp_ram_signals));
+	dp_ram_signals *signals = (dp_ram_signals *)odin_alloc(sizeof(dp_ram_signals));
 
 	// Separate the input signals according to their mapping.
 	signals->addr1 = init_signal_list();
@@ -1435,7 +1435,7 @@ void free_dp_ram_signals(dp_ram_signals *signalsvar)
 	free_signal_list(signalsvar->out1);
 	free_signal_list(signalsvar->out2);
 
-	vtr::free(signalsvar);
+	odin_free(signalsvar);
 }
 
 /*
@@ -1453,7 +1453,7 @@ void instantiate_soft_single_port_ram(nnode_t *node, short mark, netlist_t *netl
 	// The total number of memory addresses. (2^address_bits)
 	long num_addr = decoder->count;
 
-	nnode_t **and_gates = (nnode_t **)vtr::malloc(sizeof(nnode_t *) * num_addr);
+	nnode_t **and_gates = (nnode_t **)odin_alloc(sizeof(nnode_t *) * num_addr);
 
 	for (long i = 0; i < num_addr; i++)
 	{
@@ -1526,14 +1526,14 @@ void instantiate_soft_single_port_ram(nnode_t *node, short mark, netlist_t *netl
 
 		// Make sure the BLIF name comes directly from the MUX.
 		if (output_pin->name)
-			vtr::free(output_pin->name);
+			odin_free(output_pin->name);
 		output_pin->name = NULL;
 
 		remap_pin_to_new_node(output_pin, output_mux, 0);
 		instantiate_multi_port_mux(output_mux, mark, netlist);
 	}
 
-	vtr::free(and_gates);
+	odin_free(and_gates);
 
 	// Free signal lists.
 	free_sp_ram_signals(signals);
@@ -1563,9 +1563,9 @@ void instantiate_soft_dual_port_ram(nnode_t *node, short mark, netlist_t *netlis
 	int data_width = signals->data1->count;
 
 	// Arrays of common gates, one per address.
-	nnode_t **and1_gates = (nnode_t **)vtr::malloc(sizeof(nnode_t *) * num_addr);
-	nnode_t **and2_gates = (nnode_t **)vtr::malloc(sizeof(nnode_t *) * num_addr);
-	nnode_t **or_gates = (nnode_t **)vtr::malloc(sizeof(nnode_t *) * num_addr);
+	nnode_t **and1_gates = (nnode_t **)odin_alloc(sizeof(nnode_t *) * num_addr);
+	nnode_t **and2_gates = (nnode_t **)odin_alloc(sizeof(nnode_t *) * num_addr);
+	nnode_t **or_gates = (nnode_t **)odin_alloc(sizeof(nnode_t *) * num_addr);
 
 	int i;
 	for (i = 0; i < num_addr; i++)
@@ -1682,11 +1682,11 @@ void instantiate_soft_dual_port_ram(nnode_t *node, short mark, netlist_t *netlis
 
 		// Make sure the BLIF name comes directly from the MUX.
 		if (out1_pin->name) 
-			vtr::free(out1_pin->name);
+			odin_free(out1_pin->name);
 		out1_pin->name = NULL;
 
 		if (out2_pin->name) 
-			vtr::free(out2_pin->name);
+			odin_free(out2_pin->name);
 		out2_pin->name = NULL;
 
 		remap_pin_to_new_node(out1_pin, output_mux1, 0);
@@ -1697,9 +1697,9 @@ void instantiate_soft_dual_port_ram(nnode_t *node, short mark, netlist_t *netlis
 		instantiate_multi_port_mux(output_mux2, mark, netlist);
 	}
 
-	vtr::free(and1_gates);
-	vtr::free(and2_gates);
-	vtr::free(or_gates);
+	odin_free(and1_gates);
+	odin_free(and2_gates);
+	odin_free(or_gates);
 
 	// Free signal lists.
 	free_dp_ram_signals(signals);

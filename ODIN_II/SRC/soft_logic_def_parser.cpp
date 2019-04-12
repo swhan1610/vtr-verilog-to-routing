@@ -89,8 +89,8 @@ void read_soft_def_file(t_model *hard_adder_models)
 
 		int error = 0;
 		int line_number = 0;
-		char line_buf[1024] = { 0 };
-		while (fgets(line_buf, 1024, input_file) != NULL && !error)
+		char line_buf[BUFFER_MAX_SIZE] = { 0 };
+		while (read_line_and_trim(line_buf, BUFFER_MAX_SIZE, input_file) && !error)
 		{
 			std::string line = line_buf;
 			line.erase(std::remove(line.begin(), line.end(), '\n'), line.end());
@@ -134,7 +134,7 @@ void read_soft_def_file(t_model *hard_adder_models)
 				else
 				{
 					std::string key_map = operation_name + "_" + tokens[1];
-					soft_sub_structure* def = (soft_sub_structure*)vtr::malloc(sizeof(soft_sub_structure));
+					soft_sub_structure* def = (soft_sub_structure*)odin_alloc(sizeof(soft_sub_structure));
 					def->type= vtr::strdup(soft_hard.c_str());
 					def->name= vtr::strdup(sub_structure_name.c_str());
 					def->bitsize = sub_structure_bitsize;
@@ -143,7 +143,7 @@ void read_soft_def_file(t_model *hard_adder_models)
 				}
 			}
 		}
-		vtr::free(line_buf);
+		odin_free(line_buf);
 		fclose(input_file);
 
 		if(error)

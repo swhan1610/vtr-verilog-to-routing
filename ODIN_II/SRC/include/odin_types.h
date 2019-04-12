@@ -56,12 +56,14 @@ OTHER DEALINGS IN THE SOFTWARE.
 	#define ODIN_STRING_TYPE ODIN_LONG_STRING
 #endif
 
-#define ODIN_STD_BITWIDTH (sizeof(long)*8)
+#define ODIN_MAX_BITWIDTH (sizeof(int64_t)*8)
+#define ODIN_STD_BITWIDTH (sizeof(int32_t)*8)
 
 typedef struct global_args_t_t global_args_t;
 /* new struct for the global arguments of verify_blif function */
 typedef struct global_args_read_blif_t_t global_args_read_blif_t;
 
+typedef struct buffered_ast_node_t_t buffered_ast_node_t;
 typedef struct ast_node_t_t ast_node_t;
 typedef struct typ_t typ;
 
@@ -400,6 +402,12 @@ struct typ_t
 
 };
 
+struct buffered_ast_node_t_t
+{
+	ast_node_t *symbol_node;
+	ids net_direction;
+	ids net_type;
+};
 
 struct ast_node_t_t
 {

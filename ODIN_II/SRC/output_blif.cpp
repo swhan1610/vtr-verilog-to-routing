@@ -68,7 +68,7 @@ void output_blif(char *file_name, netlist_t *netlist)
 	/* open the file for output */
 	if (global_args.high_level_block != NULL)
 	{
-		out_file = (char*)vtr::malloc(sizeof(char)*(1+strlen(file_name)+strlen(global_args.high_level_block)+6));
+		out_file = (char*)odin_alloc(sizeof(char)*(1+strlen(file_name)+strlen(global_args.high_level_block)+6));
 		odin_sprintf(out_file, "%s_%s.blif", file_name, global_args.high_level_block.value());
 		out = fopen(out_file, "w");
 	}
@@ -234,9 +234,9 @@ void depth_first_traversal_to_output(short marker_value, FILE *fp, netlist_t *ne
 {
 	int i;
 
-	netlist->gnd_node->name = vtr::strdup("gnd");
-	netlist->vcc_node->name = vtr::strdup("vcc");
-	netlist->pad_node->name = vtr::strdup("unconn");
+	netlist->gnd_node->name = odin_strdup("gnd");
+	netlist->vcc_node->name = odin_strdup("vcc");
+	netlist->pad_node->name = odin_strdup("unconn");
 	/* now traverse the ground, vcc, and unconn pins */
 	depth_traverse_output_blif(netlist->gnd_node, marker_value, fp);
 	depth_traverse_output_blif(netlist->vcc_node, marker_value, fp);
@@ -543,7 +543,7 @@ void define_logical_function(nnode_t *node, FILE *out)
 				{
 					temp_string = convert_long_to_bit_string(i, node->num_input_pins);
 					fprintf(out, "%s", temp_string);
-					vtr::free(temp_string);
+					odin_free(temp_string);
 					fprintf(out, " 1\n");
 				}
 			}
@@ -559,7 +559,7 @@ void define_logical_function(nnode_t *node, FILE *out)
 				{
 					temp_string = convert_long_to_bit_string(i, node->num_input_pins);
 					fprintf(out, "%s", temp_string);
-					vtr::free(temp_string);
+					odin_free(temp_string);
 					fprintf(out, " 1\n");
 				}
 			}

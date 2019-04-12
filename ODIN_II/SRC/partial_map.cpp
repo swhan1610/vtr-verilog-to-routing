@@ -340,7 +340,7 @@ void instantiate_multi_port_mux(nnode_t *node, short mark, netlist_t * /*netlist
 	num_ports = node->num_input_port_sizes;
 	port_offset = node->input_port_sizes[1];
 
-	muxes = (nnode_t**)vtr::malloc(sizeof(nnode_t*)*(num_ports-1));
+	muxes = (nnode_t**)odin_alloc(sizeof(nnode_t*)*(num_ports-1));
 	for(i = 0; i < num_ports-1; i++)
 	{
 		muxes[i] = make_2port_gate(MUX_2, width_of_one_hot_logic, width_of_one_hot_logic, 1, node, mark);
@@ -363,7 +363,7 @@ void instantiate_multi_port_mux(nnode_t *node, short mark, netlist_t * /*netlist
 		/* now hookup outputs */
 		remap_pin_to_new_node(node->output_pins[j], muxes[j], 0);
 	}
-	vtr::free(muxes);
+	odin_free(muxes);
 	free_nnode(node);
 }
 
@@ -376,7 +376,7 @@ void instantiate_not_logic(nnode_t *node, short mark, netlist_t * /*netlist*/)
 	nnode_t **new_not_cells;
 	int i;
 
-	new_not_cells = (nnode_t**)vtr::malloc(sizeof(nnode_t*)*width);
+	new_not_cells = (nnode_t**)odin_alloc(sizeof(nnode_t*)*width);
 
 	for (i = 0; i < width; i++)
 	{
@@ -391,7 +391,7 @@ void instantiate_not_logic(nnode_t *node, short mark, netlist_t * /*netlist*/)
 		remap_pin_to_new_node(node->output_pins[i], new_not_cells[i], 0);
 	}
 
-	vtr::free(new_not_cells);
+	odin_free(new_not_cells);
 	free_nnode(node);
 }
 
@@ -627,7 +627,7 @@ void instantiate_add_w_carry(nnode_t *node, short mark, netlist_t *netlist)
 
 	oassert(node->num_input_pins > 0);
 
-	int *width = (int*)vtr::malloc(pinout_count * sizeof(int));
+	int *width = (int*)odin_alloc(pinout_count * sizeof(int));
 
 	if(node->num_input_port_sizes == 2)
 		width[out] = node->output_port_sizes[0];
@@ -639,7 +639,7 @@ void instantiate_add_w_carry(nnode_t *node, short mark, netlist_t *netlist)
 
 	instantiate_add_w_carry_block(width, node, mark, netlist, 0);
 
-	vtr::free(width);
+	odin_free(width);
 }
 
 /*---------------------------------------------------------------------------------------------
@@ -654,7 +654,7 @@ void instantiate_sub_w_carry(nnode_t *node, short mark, netlist_t *netlist)
 
 	oassert(node->num_input_pins > 0);
 
-	int *width = (int*)vtr::malloc(pinout_count * sizeof(int));
+	int *width = (int*)odin_alloc(pinout_count * sizeof(int));
 	width[out] = node->output_port_sizes[0];
 
 	if(node->num_input_port_sizes == 1)
@@ -670,7 +670,7 @@ void instantiate_sub_w_carry(nnode_t *node, short mark, netlist_t *netlist)
 
 	instantiate_add_w_carry_block(width, node, mark, netlist, 1);
 
-	vtr::free(width);
+	odin_free(width);
 }
 
 /*---------------------------------------------------------------------------------------------
@@ -834,9 +834,9 @@ void instantiate_GT(nnode_t *node, operation_list type, short mark, netlist_t *n
 	/* collects all the GT signals and determines if gt */
 	logical_or_gate = make_1port_logic_gate(LOGICAL_OR, width_max, node, mark);
 	/* collects a chain if any 1 happens than the GT cells output 0 */
-	or_cells = (nnode_t**)vtr::malloc(sizeof(nnode_t*)*width_max-1);
+	or_cells = (nnode_t**)odin_alloc(sizeof(nnode_t*)*width_max-1);
 	/* each cell checks if A > B and sends out a 1 if history has no 1s (3rd input) */
-	gt_cells = (nnode_t**)vtr::malloc(sizeof(nnode_t*)*width_max);
+	gt_cells = (nnode_t**)odin_alloc(sizeof(nnode_t*)*width_max);
 
 	for (i = 0; i < width_max; i++)
 	{
@@ -927,8 +927,8 @@ void instantiate_GT(nnode_t *node, operation_list type, short mark, netlist_t *n
 		instantiate_bitwise_logic(xor_gate, BITWISE_XOR, mark, netlist);
 	}
 	
-	vtr::free(gt_cells);
-	vtr::free(or_cells);
+	odin_free(gt_cells);
+	odin_free(or_cells);
 	free_nnode(node);
 }
 

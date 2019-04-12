@@ -58,7 +58,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 typedef unsigned int *pset;
 
-#define ALLOC(type, num)	((type *) malloc(sizeof(type) * (num)))
+#define ALLOC(type, num)	((type *) odin_alloc(sizeof(type) * (num)))
 
 #define set_remove(set, e)      (set[WHICH_WORD(e)] &= ~ (shift_left_value_with_overflow_check(0x1, WHICH_BIT(e))))
 #define set_insert(set, e)      (set[WHICH_WORD(e)] |= (shift_left_value_with_overflow_check(0x1, WHICH_BIT(e))))
@@ -476,7 +476,7 @@ ace_cube_t * ace_cube_dup(ace_cube_t * cube) {
     int i;
     ace_cube_t * cube_copy;
 
-    cube_copy = (ace_cube_t * ) malloc(sizeof(ace_cube_t));
+    cube_copy = (ace_cube_t * ) odin_alloc(sizeof(ace_cube_t));
     cube_copy->static_prob = cube->static_prob;
     cube_copy->num_literals = cube->num_literals;
     cube_copy->cube = set_new (2 * cube->num_literals);
@@ -510,7 +510,7 @@ ace_cube_t * ace_cube_new_dc(int num_literals) {
     int i;
     ace_cube_t * new_cube;
 
-    new_cube = (ace_cube_t * ) malloc(sizeof(ace_cube_t));
+    new_cube = (ace_cube_t * ) odin_alloc(sizeof(ace_cube_t));
     new_cube->num_literals = num_literals;
     new_cube->static_prob = 1.0;
     new_cube->cube = set_new (2 * num_literals);
@@ -617,7 +617,7 @@ double calc_cube_switch_prob_recur(DdManager * mgr, DdNode * bdd, ace_cube_t * c
 
     i = Cudd_Regular(bdd)->index;
 
-    current_prob = ( double * ) malloc(sizeof(double));
+    current_prob = ( double * ) odin_alloc(sizeof(double));
 
     if (Cudd_IsComplement(bdd)) {
 	bdd_if1 = Cudd_E(bdd);
@@ -722,16 +722,16 @@ double calc_switch_prob_recur(DdManager * mgr, DdNode * bdd_next, DdNode * bdd, 
     set_insert(cube1->cube, 2 * i + 1);
     switch_prob_t = calc_switch_prob_recur(mgr, bdd_next, bdd_if1, cube1, node,
 					   P1 * info->static_prob, phase );
-    vtr::free(cube1->cube);
-    vtr::free(cube1);
+    odin_free(cube1->cube);
+    odin_free(cube1);
     /* Recursive call down the ELSE branch */
     cube0 = ace_cube_dup(cube);
     set_insert(cube0->cube, 2 * i);
     set_remove(cube0->cube, 2 * i + 1);
     switch_prob_e = calc_switch_prob_recur(mgr, bdd_next, bdd_if0,  cube0, node,
 					   P1 * (1.0 - info->static_prob), phase );
-    vtr::free(cube0->cube);
-    vtr::free(cube0);
+    odin_free(cube0->cube);
+    odin_free(cube0);
 
     return (switch_prob_t + switch_prob_e);
 }

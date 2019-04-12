@@ -1,6 +1,8 @@
 #ifndef verilog_preprocessor_h
 #define verilog_preprocessor_h
 
+#include <stdio.h>
+
 #define DefaultSize 20
 #define MaxLine	4096
 
@@ -75,12 +77,6 @@ typedef struct
 int top(veri_flag_stack *stack);
 int pop(veri_flag_stack *stack);
 void push(veri_flag_stack *stack, int flag);
-
-/* ------------------------------------------------------------------------- */
-
-
-/* General Utility methods ------------------------------------------------- */
-char* trim(char *string);
 
 /* ------------------------------------------------------------------------- */
 

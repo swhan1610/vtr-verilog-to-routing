@@ -47,8 +47,8 @@ long shift_left_value_with_overflow_check(long input_value, long shift_by)
 {
 	if(shift_by < 0)
 		error_message(NETLIST_ERROR, -1, -1, "requesting a shift left that is negative [%ld]\n",shift_by);
-	else if(shift_by >= ODIN_STD_BITWIDTH-1 )
-		error_message(NETLIST_ERROR, -1, -1, "requesting a shift left that will overflow the maximum size of %d [%ld]\n", shift_by, ODIN_STD_BITWIDTH-1);
+	else if(shift_by >= ODIN_MAX_BITWIDTH-1 )
+		error_message(NETLIST_ERROR, -1, -1, "requesting a shift left that will overflow the maximum size of %d [%ld]\n", shift_by, ODIN_MAX_BITWIDTH-1);
 
 	return input_value << shift_by;
 }
@@ -83,7 +83,7 @@ char *make_signal_name(char *signal_name, int bit)
 	if (bit != -1) 
 		return_string << "-" << std::dec << bit;
 		
-	return vtr::strdup(return_string.str().c_str());
+	return odin_strdup(return_string.str().c_str());
 }
 
 /*---------------------------------------------------------------------------------------------
@@ -113,7 +113,7 @@ char *make_full_ref_name(const char *previous, const char *module_name, const ch
 		oassert(signal_name);
 		return_string	<< "~" << std::dec << bit ;
 	}
-	return vtr::strdup(return_string.str().c_str());
+	return odin_strdup(return_string.str().c_str());
 }
 
 /*---------------------------------------------------------------------------------------------
@@ -180,7 +180,7 @@ char *convert_string_of_radix_to_bit_string(char *string, int radix, int binary_
 char *convert_long_to_bit_string(long orig_long, int num_bits)
 {
 	int i;
-	char *return_val = (char*)malloc(sizeof(char)*(num_bits+1));
+	char *return_val = (char*)odin_alloc(sizeof(char)*(num_bits+1));
 	int mask = 1;
 
 	for (i = num_bits-1; i >= 0; i--)
@@ -248,8 +248,8 @@ char *convert_hex_string_of_size_to_bit_string(short is_dont_care_number, char *
 	if (!is_hex_string(orig_string))
 		error_message(PARSE_ERROR, -1, -1, "Invalid hex number: %s.\n", orig_string);
 
-	char *bit_string = (char *)vtr::calloc(1,sizeof(char));
-	char *string     = vtr::strdup(orig_string);
+	char *bit_string = (char *)odin_calloc(1,sizeof(char));
+	char *string     = odin_strdup(orig_string);
 	int   size       = strlen(string);
 
 	// Change to big endian. (We want to add higher order bits at the end.)
@@ -267,17 +267,17 @@ char *convert_hex_string_of_size_to_bit_string(short is_dont_care_number, char *
 		{
 			char bit = value % 2;
 			value /= 2;
-			bit_string = (char *)vtr::realloc(bit_string, sizeof(char) * (count + 2));
+			bit_string = (char *)odin_realloc(bit_string, sizeof(char) * (count + 2));
 			bit_string[count++] = '0' + bit;
 			bit_string[count]   = '\0';
 		}
 	}
-	vtr::free(string);
+	odin_free(string);
 
 	// Pad with zeros to binary_size.
 	while (count < binary_size)
 	{
-		bit_string = (char *)vtr::realloc(bit_string, sizeof(char) * (count + 2));
+		bit_string = (char *)odin_realloc(bit_string, sizeof(char) * (count + 2));
 		bit_string[count++] = '0';
 		bit_string[count]   = '\0';
 	}
@@ -287,14 +287,14 @@ char *convert_hex_string_of_size_to_bit_string(short is_dont_care_number, char *
 	// Change to little endian
 	reverse_string(bit_string, binary_size);
 	// Copy out only the bits before the truncation.
-	return_string = vtr::strdup(bit_string);
-	vtr::free(bit_string);
+	return_string = odin_strdup(bit_string);
+	odin_free(bit_string);
 
     }
     else if(is_dont_care_number == 1){
-       char *string = vtr::strdup(orig_string);
+       char *string = odin_strdup(orig_string);
        int   size       = strlen(string);
-       char *bit_string = (char *)vtr::calloc(1,sizeof(char));
+       char *bit_string = (char *)odin_calloc(1,sizeof(char));
        int count = 0;
        int i;
        for (i = 0; i < size; i++)
@@ -307,17 +307,17 @@ char *convert_hex_string_of_size_to_bit_string(short is_dont_care_number, char *
 		    {
 			    //char bit = value % 2;
 			    //value /= 2;
-			    bit_string = (char *)vtr::realloc(bit_string, sizeof(char) * (count + 2));
+			    bit_string = (char *)odin_realloc(bit_string, sizeof(char) * (count + 2));
 			    bit_string[count++] = string[i];
 			    bit_string[count]   = '\0';
 		    }
 	    }
 
-        vtr::free(string);
+        odin_free(string);
 
         while (count < binary_size)
 	    {
-		    bit_string = (char *)vtr::realloc(bit_string, sizeof(char) * (count + 2));
+		    bit_string = (char *)odin_realloc(bit_string, sizeof(char) * (count + 2));
 		    bit_string[count++] = '0';
 		    bit_string[count]   = '\0';
 	    }
@@ -326,8 +326,8 @@ char *convert_hex_string_of_size_to_bit_string(short is_dont_care_number, char *
 
         reverse_string(bit_string, binary_size);
 
-        return_string = vtr::strdup(bit_string);
-	    vtr::free(bit_string);
+        return_string = odin_strdup(bit_string);
+	    odin_free(bit_string);
 
 
 
@@ -352,8 +352,8 @@ char *convert_oct_string_of_size_to_bit_string(char *orig_string, int binary_siz
 	if (!is_octal_string(orig_string))
 		error_message(PARSE_ERROR, -1, -1, "Invalid octal number: %s.\n", orig_string);
 
-	char *bit_string = (char *)vtr::calloc(1,sizeof(char));
-	char *string     = vtr::strdup(orig_string);
+	char *bit_string = (char *)odin_calloc(1,sizeof(char));
+	char *string     = odin_strdup(orig_string);
 	int   size       = strlen(string);
 
 	// Change to big endian. (We want to add higher order bits at the end.)
@@ -371,17 +371,17 @@ char *convert_oct_string_of_size_to_bit_string(char *orig_string, int binary_siz
 		{
 			char bit = value % 2;
 			value /= 2;
-			bit_string = (char *)vtr::realloc(bit_string, sizeof(char) * (count + 2));
+			bit_string = (char *)odin_realloc(bit_string, sizeof(char) * (count + 2));
 			bit_string[count++] = '0' + bit;
 			bit_string[count]   = '\0';
 		}
 	}
-	vtr::free(string);
+	odin_free(string);
 
 	// Pad with zeros to binary_size.
 	while (count < binary_size)
 	{
-		bit_string = (char *)vtr::realloc(bit_string, sizeof(char) * (count + 2));
+		bit_string = (char *)odin_realloc(bit_string, sizeof(char) * (count + 2));
 		bit_string[count++] = '0';
 		bit_string[count]   = '\0';
 	}
@@ -391,8 +391,8 @@ char *convert_oct_string_of_size_to_bit_string(char *orig_string, int binary_siz
 	// Change to little endian
 	reverse_string(bit_string, binary_size);
 	// Copy out only the bits before the truncation.
-	char *return_string = vtr::strdup(bit_string);
-	vtr::free(bit_string);
+	char *return_string = odin_strdup(bit_string);
+	odin_free(bit_string);
 	return return_string;
 }
 
@@ -406,7 +406,7 @@ char *convert_binary_string_of_size_to_bit_string(short is_dont_care_number, cha
 		error_message(PARSE_ERROR, -1, -1, "Invalid binary number: %s.\n", orig_string);
 
 	int   count      = strlen(orig_string);
-	char *bit_string = (char *)vtr::calloc(count + 1, sizeof(char));
+	char *bit_string = (char *)odin_calloc(count + 1, sizeof(char));
 
 	// Copy the original string into the buffer.
 	strcat(bit_string, orig_string);
@@ -417,7 +417,7 @@ char *convert_binary_string_of_size_to_bit_string(short is_dont_care_number, cha
 	// Pad with zeros to binary_size.
 	while (count < binary_size)
 	{
-		bit_string = (char *)vtr::realloc(bit_string, sizeof(char) * (count + 2));
+		bit_string = (char *)odin_realloc(bit_string, sizeof(char) * (count + 2));
 		bit_string[count++] = '0';
 		bit_string[count]   = '\0';
 	}
@@ -427,8 +427,8 @@ char *convert_binary_string_of_size_to_bit_string(short is_dont_care_number, cha
 	// Change to little endian
 	reverse_string(bit_string, binary_size);
 	// Copy out only the bits before the truncation.
-	char *return_string = vtr::strdup(bit_string);
-	vtr::free(bit_string);
+	char *return_string = odin_strdup(bit_string);
+	odin_free(bit_string);
 	return return_string;
 }
 
@@ -506,9 +506,9 @@ int is_binary_string(char *string)
 char *get_pin_name(char *name)
 {	// Remove everything before the ^
 	if (strchr(name, '^'))
-		return vtr::strdup(strchr(name, '^') + 1);
+		return odin_strdup(strchr(name, '^') + 1);
 	else
-		return vtr::strdup(name);
+		return odin_strdup(name);
 }
 
 
@@ -543,7 +543,7 @@ int get_pin_number(char *name)
 	if (tilde) pin_number = strtol(tilde+1,NULL,10);
 	else       pin_number = -1;
 
-	vtr::free(pin_name);
+	odin_free(pin_name);
 	return pin_number;
 }
 
@@ -572,7 +572,7 @@ char *make_string_based_on_id(nnode_t *node)
 	// any unique id greater than 20 characters means trouble
 	std::string return_string = std::string ("n") + std::to_string(node->unique_id);
 
-	return vtr::strdup(return_string.c_str());
+	return odin_strdup(return_string.c_str());
  }
 
 /*---------------------------------------------------------------------------------------------
@@ -597,7 +597,7 @@ std::string make_simple_name(char *input, const char *flatten_string, char flatt
  *-----------------------------------------------------------------*/
 void *my_malloc_struct(long bytes_to_alloc)
 {
-	void *allocated = vtr::calloc(1, bytes_to_alloc);
+	void *allocated = odin_calloc(1, bytes_to_alloc);
 	static long int m_id = 0;
 
 	// ways to stop the execution at the point when a specific structure is built...note it needs to be m_id - 1 ... it's unique_id in most data structures
@@ -613,22 +613,6 @@ void *my_malloc_struct(long bytes_to_alloc)
 	*((long int*)allocated) = m_id++;
 
 	return allocated;
-}
-
-/*---------------------------------------------------------------------------------------------
- * (function: pow2 )
- *-------------------------------------------------------------------------------------------*/
-long int pow2(int to_the_power)
-{
-	int i;
-	long int return_val = 1;
-
-	for (i = 0; i < to_the_power; i++)
-	{
-		return_val = return_val << 1;
-	}
-
-	return return_val;
 }
 
 /*
@@ -679,7 +663,7 @@ char *append_string(const char *string, const char *appendage, ...)
 	va_end(ap);
 
 	std::string new_string = std::string(string) + std::string(buffer);
-	return vtr::strdup(new_string.c_str());
+	return odin_strdup(new_string.c_str());
 }
 
 /*
@@ -702,10 +686,16 @@ void reverse_string(char *string, int length)
  * (function: to_bit)
  *-------------------------------------------------------------------------------------------*/
 short get_bit(char in){
-	if(in == 48 || in == 49)
-		return (short)in-48;
-	fprintf(stderr,"not a valid bit\n");
-    return -1;
+	switch(in)
+	{
+		case '0': return 0;
+		case '1': return 1;
+		default:
+		{
+			fprintf(stderr,"not a valid bit\n");
+			return -1;
+		}
+	}
 }
 
 void passed_verify_i_o_availabilty(nnode_t *node, int expected_input_size, int expected_output_size, const char *current_src, int line_src) {
@@ -735,63 +725,6 @@ void passed_verify_i_o_availabilty(nnode_t *node, int expected_input_size, int e
 
 	if(error)
 		error_message(SIMULATION_ERROR, -1, -1, "failed for %s:%s %s\n",node_name_based_on_op(node), node->name, err_message.str().c_str());
-}
-
-
-/*
-Search and replace a string keeping original string intact
-*/
-char *search_replace(char *src, const char *sKey, const char *rKey, int flag)
-{
-	std::string tmp;
-	char *line;
-	line = vtr::strdup(src);
-	tmp = line;
-	switch(flag)
-	{
-		case 1:
-			tmp = vtr::replace_first(tmp,sKey,rKey);
-			odin_sprintf(line,"%s",tmp.c_str());
-			break;
-		case 2:
-			tmp = vtr::replace_all(tmp,sKey,rKey);
-			odin_sprintf(line,"%s",tmp.c_str());
-			break;
-		default:
-			return line;
-	}
-	return line;
-}
-std::string find_substring(char *src,const char *sKey,int flag)
-{
-	// flag == 1 first half, flag == 2 second half
-
-	std::string tmp(src);
-	std::string key(sKey);
-	long found = tmp.find(key);
-	switch(flag)
-	{
-		case 1:
-   			return tmp.substr(0,found-1);
-
-		case 2:
-   			return tmp.substr(found,tmp.length());
-
-		default:
-			return tmp;
-	}
-}
-
-bool validate_string_regex(const char *str_in, const char *pattern_in)
-{
-	std::string str(str_in);
-    std::regex pattern(pattern_in);
-
-    auto words_begin = std::sregex_iterator(str.begin(), str.end(), pattern);
-	auto words_end = std::sregex_iterator();
-	if (std::distance(words_begin,words_end) > 0)
-		return true;
-	return false;
 }
 
 /*
@@ -824,29 +757,6 @@ std::string strip_path_and_ext(std::string file)
 	std::string::size_type loc_path = file.find_last_of("/")+1;
 	std::string::size_type loc_ext = file.find_last_of(".");
 	return file.substr(loc_path, loc_ext-loc_path);
-}
-
-/*
- * Parses the given comma separated list
- */
-std::vector<std::string> parse_seperated_list(char *list, const char *separator)
-{
-	std::vector<std::string> list_out;
-
-	// Parse the list.
-	if (!list)
-		return list_out;
-
-
-	char *pin_list = vtr::strdup(list);
-	char *token    = strtok(pin_list, separator);
-	while (token)
-	{
-		list_out.push_back(token);
-		token = strtok(NULL, ",");
-	}
-	vtr::free(pin_list);
-	return list_out;
 }
 
 /*
@@ -896,32 +806,54 @@ int print_progress_bar(double completion, int position, int length, double time)
 	return position;
 }
 
-/*
- * Trims characters in the given "chars" string
- * from the end of the given string.
- */
-void trim_string(char* string, const char *chars)
+static bool is_whitespace(const char in)
 {
-	if (string)
-	{
-		int length;
-		while((length = strlen(string)))
-		{	int trimmed = FALSE;
-			unsigned int i;
-			for (i = 0; i < strlen(chars); i++)
-			{
-				if (string[length-1] == chars[i])
-				{
-					trimmed = TRUE;
-					string[length-1] = '\0';
-					break;
-				}
-			}
+	return (in == ' ' || in == '\t' || in == '\n' || in == '\r');
+}
 
-			if (!trimmed)
-				break;
+/* General Utility methods ------------------------------------------------- */
+char* trim(char *input_string, int n)
+{
+	if (!input_string)
+		return input_string;
+  
+	int head = 0;
+	int tail = 0;
+	char current = ' ';
+	char previous = ' ';
+
+	// trim head and compress
+	while( tail < n && input_string[tail] != '\0' )
+	{
+		previous = current;
+		current = input_string[tail];
+		input_string[tail] = '\0';
+
+		tail += 1;
+
+		if( is_whitespace(current) )
+		{
+			if( ! is_whitespace(previous) )
+			{
+				input_string[head] = ' ';
+				head += 1;	
+			}
+		}
+		else
+		{
+			input_string[head] = current;
+			head += 1;	
 		}
 	}
+
+	// trim tail end
+	while( head >= 0 && is_whitespace(input_string[head]) )
+	{
+		input_string[head] = '\0';
+		head -= 1;
+	}
+
+	return input_string;
 }
 
 /**
@@ -969,8 +901,19 @@ int odin_sprintf (char *s, const char *format, ...)
     {
         va_end(args_copy) ;
         va_end(args) ;
+		s[0] = '\0';
         return -BUFFER_MAX_SIZE;
     }
 
 }
- 
+
+bool read_line_and_trim(char *buffer, long n_limit, FILE *file_ptr)
+{
+	if(NULL != vtr::fgets(buffer, n_limit, file_ptr))
+	{
+		trim(buffer, n_limit);
+		return true;
+	}
+
+	return false;
+} 
